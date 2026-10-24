@@ -1,0 +1,1201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#18252B">
+<title>仓库（测试版）</title>
+<style>
+:root{
+  --bg:#E9ECEA; --card:#FFFFFF; --ink:#18252B; --mute:#5F6E74; --line:#D3D9D6; --soft:#EEF1F0;
+  --blue:#1D4E89; --yel:#F2C230; --red:#C23B2C; --green:#2F7A4D;
+  --r:10px;
+  font-family:"HarmonyOS Sans SC","PingFang SC","Noto Sans CJK SC","Source Han Sans SC","Microsoft YaHei",system-ui,sans-serif;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink);font-size:16px;line-height:1.45}
+button{font:inherit;color:inherit;border:0;background:none;cursor:pointer;padding:0}
+input,select,textarea{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+:focus-visible{outline:2.5px solid var(--yel);outline-offset:2px}
+
+header.top{position:sticky;top:0;z-index:20;background:var(--ink);color:#fff;height:50px;padding:0 12px 0 14px;display:flex;align-items:center;gap:10px}
+.top h1{font-size:18px;margin:0;font-weight:700}
+.sync{display:flex;align-items:center;gap:6px;font-size:12px;color:#B9C6CC;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sync i{width:8px;height:8px;border-radius:50%;background:#8a979c;flex:none}
+.sync.ok i{background:#4CC27A}.sync.off i{background:var(--yel)}.sync.err i{background:#ff6b5b}
+.me{background:rgba(255,255,255,.14);border-radius:999px;height:32px;padding:0 12px;font-size:14px;color:#fff;white-space:nowrap;max-width:42vw;overflow:hidden;text-overflow:ellipsis}
+
+main{padding:0 12px calc(96px + env(safe-area-inset-bottom));max-width:720px;margin:0 auto}
+.banner{margin:10px 0 0;background:#FFF1C2;color:#5c4400;border-radius:8px;padding:8px 12px;font-size:13px}
+.banner.err{background:#FBE1DD;color:#7d2219}
+.searchbar{position:sticky;top:50px;z-index:15;background:var(--bg);padding:10px 0 4px}
+.searchbar input{width:100%;height:48px;border:1.5px solid var(--line);border-radius:var(--r);padding:0 14px;background:#fff;font-size:16px;-webkit-appearance:none}
+.searchbar input:focus{outline:none;border-color:var(--blue)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:6px 0 10px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;height:34px;padding:0 14px;border-radius:6px;background:#fff;border:1px solid var(--line);font-size:14px;color:var(--mute)}
+.chip.on{background:var(--yel);border-color:var(--yel);color:var(--ink);font-weight:700}
+
+.list{display:flex;flex-direction:column;gap:1px;background:var(--line);border-radius:var(--r);overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;background:#fff;padding:10px 12px;min-height:72px;text-align:left;width:100%}
+.row:active{background:#F4F6F5}
+.thumb{width:52px;height:52px;border-radius:8px;flex:none;background:#DDE3E0;display:grid;place-items:center;font-weight:700;color:var(--mute);font-size:20px;overflow:hidden}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.mid{flex:1;min-width:0}
+.nm{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sub{font-size:13px;color:var(--mute);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.qty{text-align:right;flex:none;max-width:40%}
+.qty b{font-size:26px;font-weight:700;line-height:1}
+.qty small{display:block;font-size:12px;color:var(--mute);margin-top:4px;white-space:nowrap}
+.neg{color:var(--red)!important}
+.foot{text-align:center;color:var(--mute);font-size:13px;margin:12px 0}
+.empty{padding:40px 16px;text-align:center;color:var(--mute)}
+
+.h{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:16px 2px 8px}
+.h h2{font-size:17px;margin:0}
+.card{background:#fff;border-radius:var(--r);padding:12px;margin-bottom:10px}
+.card .t1{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.card .who{font-weight:700}
+.card .when{font-size:13px;color:var(--mute)}
+.line{display:flex;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--soft);font-size:15px}
+.line:first-of-type{border-top:0}
+.line .mid small{display:block;color:var(--mute);font-size:12px}
+.line input{width:84px;height:42px;border:1.5px solid var(--line);border-radius:8px;text-align:center;font-size:18px;font-weight:700}
+.note{font-size:14px;color:var(--mute);margin-top:6px}
+.tag{display:inline-block;font-size:12px;padding:2px 8px;border-radius:4px;background:var(--soft);color:var(--mute);white-space:nowrap}
+.tag.y{background:#FFF1C2;color:#7A5A00}.tag.g{background:#DDF1E4;color:var(--green)}.tag.r{background:#FBE1DD;color:var(--red)}.tag.b{background:#DCE7F5;color:var(--blue)}
+
+.btn{height:50px;border-radius:var(--r);padding:0 16px;font-size:17px;font-weight:600;background:var(--soft);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.sm{height:40px;font-size:15px;padding:0 14px}
+.btn.pri{background:var(--blue);color:#fff}
+.btn.in{background:var(--green);color:#fff}
+.btn.warn{background:#fff;border:1.5px solid var(--red);color:var(--red)}
+.btn.line2{background:#fff;border:1.5px solid var(--line)}
+.btn:disabled{opacity:.45}
+.btns{display:flex;gap:10px;margin-top:12px}.btns .btn{flex:1}
+.link{color:var(--blue);font-weight:600;font-size:15px}
+
+.menu{background:#fff;border-radius:var(--r);overflow:hidden;margin-bottom:12px}
+.menu button{display:flex;justify-content:space-between;align-items:center;width:100%;text-align:left;padding:0 14px;min-height:54px;border-top:1px solid var(--soft);font-size:16px}
+.menu button:first-child{border-top:0}
+.menu button small{color:var(--mute);font-size:13px}
+
+nav.tabs{position:fixed;bottom:0;left:0;right:0;z-index:30;background:#fff;border-top:1px solid var(--line);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+nav.tabs button{flex:1;height:56px;font-size:15px;color:var(--mute);position:relative}
+nav.tabs button.on{color:var(--blue);font-weight:700}
+nav.tabs button.on::before{content:"";position:absolute;top:0;left:28%;right:28%;height:3px;border-radius:0 0 3px 3px;background:var(--blue)}
+.badge{position:absolute;top:7px;left:calc(50% + 12px);background:var(--red);color:#fff;border-radius:999px;font-size:11px;min-width:18px;height:18px;padding:0 5px;display:grid;place-items:center;font-weight:700}
+
+.fab{position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:25;height:52px;padding:0 20px;border-radius:26px;background:var(--blue);color:#fff;font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(29,78,137,.35)}
+.cartbar{position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:25;background:var(--ink);color:#fff;border-radius:12px;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;font-size:15px}
+.cartbar .btn{height:40px;background:var(--yel);color:var(--ink);font-size:15px}
+
+.mask{position:fixed;inset:0;background:rgba(10,20,25,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:#fff;width:100%;max-width:600px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:14px 16px calc(20px + env(safe-area-inset-bottom));animation:up .18s ease-out;-webkit-overflow-scrolling:touch}
+@keyframes up{from{transform:translateY(30px);opacity:.6}}
+@media (prefers-reduced-motion:reduce){.sheet{animation:none}}
+.sheet h2{font-size:21px;margin:0}
+.sheet .sh{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:6px}
+.x{width:36px;height:36px;border-radius:50%;background:var(--soft);font-size:20px;line-height:36px;text-align:center;flex:none}
+.field{margin-top:12px}
+.field>label{display:block;font-size:13px;color:var(--mute);margin-bottom:4px}
+.field input:not([type=checkbox]),.field select,.field textarea{width:100%;height:48px;border:1.5px solid var(--line);border-radius:8px;padding:0 12px;background:#fff;font-size:16px;-webkit-appearance:none}
+.field textarea{height:72px;padding:10px 12px;resize:vertical}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--blue)}
+.check{display:flex;align-items:center;gap:10px;min-height:44px;font-size:16px}
+.check input{width:22px;height:22px}
+.quick{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.quick button{height:32px;padding:0 10px;border-radius:6px;background:var(--soft);font-size:14px}
+.stepper{display:flex;align-items:center;gap:8px}
+.stepper button{width:56px;height:56px;border-radius:10px;background:var(--soft);font-size:28px;font-weight:600;flex:none}
+.stepper input{flex:1;min-width:0;height:56px;text-align:center;font-size:28px;font-weight:700;border:1.5px solid var(--line);border-radius:10px;-webkit-appearance:none}
+.stepper input:focus{outline:none;border-color:var(--blue)}
+.stats{display:flex;gap:1px;background:var(--line);border-radius:10px;overflow:hidden;margin-top:12px}
+.stats div{flex:1;background:#F6F8F7;padding:8px 4px;text-align:center}
+.stats b{display:block;font-size:24px;line-height:1.2}
+.stats span{font-size:12px;color:var(--mute)}
+.photo{width:100%;aspect-ratio:16/10;background:#DDE3E0;border-radius:12px;overflow:hidden;display:grid;place-items:center;color:var(--mute);position:relative;margin-bottom:12px;font-size:56px;font-weight:700}
+.photo.small{aspect-ratio:auto;height:120px;font-size:15px;font-weight:400}
+.photo.none{aspect-ratio:auto;height:84px;font-size:15px;font-weight:400;justify-content:start;padding-left:16px}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.cam{position:absolute;right:10px;bottom:10px;background:rgba(24,37,43,.82);color:#fff;border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600}
+.cam input,.filebtn input{display:none}
+.filebtn{display:inline-flex}
+.sec{margin-top:18px}
+.sec h3{font-size:14px;color:var(--mute);margin:0 0 4px;font-weight:600}
+.mini{font-size:14px;padding:8px 0;border-bottom:1px solid var(--soft);display:flex;justify-content:space-between;gap:8px}
+.mini:last-child{border-bottom:0}
+.mini span:last-child{color:var(--mute);white-space:nowrap}
+.seg{display:flex;gap:8px;flex-wrap:wrap}
+.seg button{height:42px;padding:0 14px;border-radius:8px;border:1.5px solid var(--line);background:#fff;font-size:15px}
+.seg button.on{border-color:var(--blue);background:#DCE7F5;color:var(--blue);font-weight:700}
+.sugg{border:1px solid var(--line);border-radius:8px;margin-top:4px;overflow:hidden}
+.sugg button{display:block;width:100%;text-align:left;padding:10px 12px;border-top:1px solid var(--soft);font-size:15px}
+.sugg button:first-child{border-top:0}
+.warnbox{background:#FFF1C2;color:#5c4400;border-radius:8px;padding:8px 12px;font-size:14px;margin-top:8px}
+table.pv{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}
+table.pv th,table.pv td{border-bottom:1px solid var(--soft);padding:6px 4px;text-align:left}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(132px + env(safe-area-inset-bottom));background:var(--ink);color:#fff;border-radius:10px;padding:12px 16px;z-index:80;display:flex;gap:16px;align-items:center;max-width:92vw;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+.toast button{color:var(--yel);font-weight:700;font-size:15px}
+.day{font-size:13px;color:var(--mute);margin:14px 2px 6px;font-weight:600}
+.rec{display:flex;gap:10px;align-items:center;background:#fff;padding:10px 12px;border-top:1px solid var(--soft);width:100%;text-align:left}
+.rec:first-child{border-top:0}
+.rec .sign{font-weight:700;font-size:18px;white-space:nowrap}
+.plus{color:var(--green)}.minus{color:var(--blue)}
+.big{font-size:22px;font-weight:700;margin:6px 0}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1>仓库</h1>
+  <div class="sync" id="sync"><i></i><span>连接中…</span></div>
+  <button class="me" id="meBtn" aria-label="切换身份">选择身份</button>
+</header>
+<main id="main"></main>
+<div id="float"></div>
+<nav class="tabs" id="tabs"></nav>
+<datalist id="peopleList"></datalist>
+<datalist id="catList"></datalist>
+
+<script type="module">
+/* =========================================================
+   仓库测试版
+   把 Firebase 控制台给的 firebaseConfig 粘贴到下面（替换 null）。
+   为 null 时是“本地演示模式”：数据只存在这部手机。
+   ========================================================= */
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyDXR5i3jt2N0pEDCPqtqco6nh7E9AEIDs4",
+  authDomain: "cangku-test-ca767.firebaseapp.com",
+  projectId: "cangku-test-ca767",
+  storageBucket: "cangku-test-ca767.firebasestorage.app",
+  messagingSenderId: "204511919854",
+  appId: "1:204511919854:web:f3e1360f46c62fddf33dff"
+};
+const FB_VER = '10.12.2';
+
+/* ---------- 小工具 ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const INC = n => ({ __inc: n });
+const now = () => Date.now();
+const r3 = n => Math.round((Number(n) || 0) * 1000) / 1000;
+const fmt = n => String(r3(n));
+const p2 = x => String(x).padStart(2, '0');
+const fmtT = t => { const d = new Date(t); return `${p2(d.getMonth()+1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const fmtD = t => { const d = new Date(t); return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; };
+const fmtHM = t => { const d = new Date(t); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; };
+const daysSince = t => Math.max(0, Math.floor((now() - t) / 86400000));
+const readNum = v => { const n = parseFloat(String(v ?? '').replace(/，|,/g, '.').trim()); return Number.isFinite(n) ? r3(n) : NaN; };
+const clean = o => { const r = {}; for (const k in o) if (o[k] !== undefined) r[k] = o[k]; return r; };
+const isWeChat = () => /MicroMessenger/i.test(navigator.userAgent);
+
+/* ---------- 数据层：本地 / 云端 ---------- */
+function makeLocal() {
+  const KEY = 'ck_local_v1';
+  let data; try { data = JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { data = {}; }
+  const subs = [];
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) { toast('手机存储空间不够，这次改动没保存'); } };
+  const list = (c, opt) => {
+    let a = Object.entries(data[c] || {}).map(([id, d]) => ({ id, ...d }));
+    if (opt && opt.order) { a.sort((x, y) => (y[opt.order] || 0) - (x[opt.order] || 0)); if (opt.limit) a = a.slice(0, opt.limit); }
+    return a;
+  };
+  const emit = () => subs.forEach(s => s.cb(list(s.c, s.opt), { cache: false, pending: false }));
+  return {
+    mode: 'local',
+    sub(c, cb, opt) { subs.push({ c, cb, opt }); setTimeout(() => cb(list(c, opt), { cache: false, pending: false })); },
+    async get(c, id) { const d = data[c] && data[c][id]; return d ? { id, ...JSON.parse(JSON.stringify(d)) } : null; },
+    commit(ops) {
+      for (const o of ops) {
+        const col = data[o.c] || (data[o.c] = {});
+        if (o.op === 'set') col[o.id] = JSON.parse(JSON.stringify(o.d));
+        else if (o.op === 'upd') {
+          const d = col[o.id]; if (!d) continue;
+          for (const k in o.d) { const v = o.d[k]; d[k] = (v && typeof v === 'object' && '__inc' in v) ? r3((Number(d[k]) || 0) + v.__inc) : v; }
+        } else if (o.op === 'del') delete col[o.id];
+      }
+      save(); emit();
+    },
+    reset() { data = {}; save(); emit(); }
+  };
+}
+
+async function makeCloud(cfg) {
+  const base = `https://www.gstatic.com/firebasejs/${FB_VER}/`;
+  const [{ initializeApp }, fs] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js')]);
+  const app = initializeApp(cfg);
+  let db;
+  try { db = fs.initializeFirestore(app, { localCache: fs.persistentLocalCache({ tabManager: fs.persistentMultipleTabManager() }) }); }
+  catch (e) { console.warn(e); db = fs.getFirestore(app); }
+  const conv = d => { const r = {}; for (const k in d) { const v = d[k]; r[k] = (v && typeof v === 'object' && '__inc' in v) ? fs.increment(v.__inc) : v; } return r; };
+  return {
+    mode: 'cloud',
+    sub(c, cb, opt) {
+      let q = fs.collection(db, c);
+      if (opt && opt.order) q = fs.query(q, fs.orderBy(opt.order, 'desc'), fs.limit(opt.limit || 1000));
+      fs.onSnapshot(q, { includeMetadataChanges: true },
+        s => cb(s.docs.map(d => ({ id: d.id, ...d.data() })), { cache: s.metadata.fromCache, pending: s.metadata.hasPendingWrites }),
+        err => dbError(err));
+    },
+    async get(c, id) {
+      const ref = fs.doc(db, c, id); let s;
+      try { s = await fs.getDocFromCache(ref); } catch (e) { s = await fs.getDoc(ref); }
+      return s.exists() ? { id: s.id, ...s.data() } : null;
+    },
+    commit(ops) {
+      for (let i = 0; i < ops.length; i += 400) {
+        const b = fs.writeBatch(db);
+        for (const o of ops.slice(i, i + 400)) {
+          const ref = fs.doc(db, o.c, o.id);
+          if (o.op === 'set') b.set(ref, conv(o.d)); else if (o.op === 'upd') b.update(ref, conv(o.d)); else b.delete(ref);
+        }
+        b.commit().catch(dbError); // 不等待：离线时先写本机，联网后自动上传
+      }
+    }
+  };
+}
+let DB;
+
+/* ---------- 状态 ---------- */
+const ROLES = { keeper: '库管员', user: '领用人', buyer: '采购', viewer: '查看者' };
+const S = {
+  items: [], all: [], byId: new Map(), lends: [], reqs: [], recs: [], audit: [], settings: { returnCats: [] },
+  view: 'stock', cat: '全部', q: '', lendSort: 'time',
+  sync: { cache: true, pending: false, last: null }, err: '', dirty: false
+};
+let me = null; try { me = JSON.parse(localStorage.getItem('ck_me')); } catch (e) {}
+let cart = []; try { cart = JSON.parse(localStorage.getItem('ck_cart')) || []; } catch (e) {}
+const saveCart = () => { try { localStorage.setItem('ck_cart', JSON.stringify(cart)); } catch (e) {} };
+const isKeeper = () => me && me.role === 'keeper';
+const item = id => S.byId.get(id);
+
+/* ---------- 写入：所有改库存的动作都在这里 ---------- */
+const recOp = d => { const id = uid(); return { id, op: { op: 'set', c: 'records', id, d: clean({ t: now(), by: me ? me.name : '', ...d }) } }; };
+const itemUpd = (id, d) => ({ op: 'upd', c: 'items', id, d });
+const base = it => ({ itemId: it.id, name: it.name, spec: it.spec || '', unit: it.unit || '' });
+
+function opsIn(it, q, note) {
+  const r = recOp({ type: 'in', ...base(it), qty: q, note });
+  return { ops: [itemUpd(it.id, { stock: INC(q), lu: now() }), r.op], rec: { id: r.id, ...r.op.d } };
+}
+function opsOut(it, q, person, note, reqId) {
+  if (it.returnable) {
+    const lendId = uid();
+    const r = recOp({ type: 'lend', ...base(it), qty: q, person, note, lendId, reqId });
+    return { ops: [
+      itemUpd(it.id, { stock: INC(-q), lent: INC(q), lu: now() }),
+      { op: 'set', c: 'lends', id: lendId, d: clean({ t: now(), ...base(it), person: person || '', qty: q, returned: 0, open: true, by: me.name }) },
+      r.op], rec: { id: r.id, ...r.op.d } };
+  }
+  const r = recOp({ type: 'out', ...base(it), qty: q, person, note, reqId });
+  return { ops: [itemUpd(it.id, { stock: INC(-q), lu: now() }), r.op], rec: { id: r.id, ...r.op.d } };
+}
+function auditOp(action, rec, extra) {
+  return { op: 'set', c: 'audit', id: uid(), d: clean({ t: now(), by: me.name, action, rec, ...extra }) };
+}
+// 撤销/删除一条记录：把它对库存的影响反过来
+function reverseOps(r) {
+  const it = item(r.itemId); const ops = [];
+  if (!it) return { err: '这样物品已被删除或合并，不能撤销。' };
+  const q = r.qty;
+  if (r.type === 'in' || r.type === 'new') ops.push(itemUpd(it.id, { stock: INC(-q) }));
+  else if (r.type === 'out') ops.push(itemUpd(it.id, { stock: INC(q) }));
+  else if (r.type === 'adjust') ops.push(itemUpd(it.id, { stock: INC(-q) }));
+  else if (r.type === 'lend') {
+    const l = S.lends.find(x => x.id === r.lendId);
+    if (l && l.returned > 0) return { err: '这次借出已经有归还记录，请先删掉归还记录。' };
+    ops.push(itemUpd(it.id, { stock: INC(q), lent: INC(-q) }));
+    if (l) ops.push({ op: 'del', c: 'lends', id: l.id });
+  } else if (r.type === 'return') {
+    const l = S.lends.find(x => x.id === r.lendId);
+    if (l) ops.push({ op: 'upd', c: 'lends', id: l.id, d: { returned: INC(-q), open: true } });
+    if (r.state === '完好') ops.push(itemUpd(it.id, { stock: INC(-q), lent: INC(q) }));
+    else if (r.state === '损坏') ops.push(itemUpd(it.id, { broken: INC(-q), lent: INC(q) }));
+    else ops.push(itemUpd(it.id, { lent: INC(q) }));
+  } else return { err: '这类记录不能删除。' };
+  return { ops };
+}
+function deleteRecord(r, isUndo) {
+  const x = reverseOps(r);
+  if (x.err) { alert(x.err); return false; }
+  const ops = [...x.ops, { op: 'del', c: 'records', id: r.id }];
+  if (!isUndo) ops.push(auditOp('删除', r));
+  DB.commit(ops);
+  toast(isUndo ? '已撤销' : '已删除这条记录');
+  return true;
+}
+function editRecordQty(r, nq) {
+  const it = item(r.itemId); if (!it) { alert('这样物品已被删除或合并，不能修改。'); return false; }
+  const d = r3(nq - r.qty); if (!d) return true;
+  const ops = [];
+  if (r.type === 'in' || r.type === 'new') ops.push(itemUpd(it.id, { stock: INC(d) }));
+  else if (r.type === 'out') ops.push(itemUpd(it.id, { stock: INC(-d) }));
+  else if (r.type === 'lend') {
+    const l = S.lends.find(x => x.id === r.lendId);
+    if (l && l.returned > nq) { alert(`已经还了 ${fmt(l.returned)}，借出数量不能少于这个数。`); return false; }
+    ops.push(itemUpd(it.id, { stock: INC(-d), lent: INC(d) }));
+    if (l) ops.push({ op: 'upd', c: 'lends', id: l.id, d: { qty: INC(d), open: (l.returned < nq) } });
+  } else { alert('这类记录只能删除，不能改数量。'); return false; }
+  ops.push({ op: 'upd', c: 'records', id: r.id, d: { qty: nq, edited: true } });
+  ops.push(auditOp('修改', r, { newQty: nq }));
+  DB.commit(ops); toast('已修改');
+  return true;
+}
+
+/* ---------- 启动 ---------- */
+function dbError(e) {
+  console.error(e);
+  if (e && e.code === 'permission-denied') S.err = '数据库拒绝访问：测试模式可能已经到期（30 天），需要在 Firebase 后台更新规则。';
+  else S.err = '同步出错：' + (e && e.message || e);
+  render();
+}
+async function boot() {
+  try { DB = FIREBASE_CONFIG ? await makeCloud(FIREBASE_CONFIG) : makeLocal(); }
+  catch (e) {
+    $('#main').innerHTML = `<div class="banner err">连不上数据库，检查网络后刷新页面。（${esc(e.message)}）</div>`;
+    return;
+  }
+  DB.sub('items', (a, m) => {
+    S.all = a; S.items = a.filter(x => !x.deleted); S.byId = new Map(a.map(x => [x.id, x]));
+    S.sync.cache = m.cache; S.sync.pending = m.pending; if (!m.cache) S.sync.last = now();
+    render();
+  });
+  DB.sub('lends', a => { S.lends = a; render(); }, { order: 't', limit: 800 });
+  DB.sub('requests', a => { S.reqs = a; render(); }, { order: 't', limit: 300 });
+  DB.sub('records', a => { S.recs = a; render(); }, { order: 't', limit: 1000 });
+  DB.sub('audit', a => { S.audit = a; render(); }, { order: 't', limit: 200 });
+  DB.sub('meta', a => { const s = a.find(x => x.id === 'settings'); S.settings = { returnCats: [], ...(s || {}) }; render(); });
+  if (!me) openIdentity(true);
+  render();
+}
+addEventListener('online', () => render());
+addEventListener('offline', () => render());
+
+/* ---------- 渲染 ---------- */
+let rq = false;
+function render() { if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; doRender(); }); }
+function doRender() {
+  renderTop(); renderTabs(); renderLists();
+  const main = $('#main'); const ae = document.activeElement;
+  if (S.view !== 'stock' && ae && main.contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) { S.dirty = true; renderFloat(); return; }
+  if (S.view === 'stock') {
+    if (!$('#stockShell')) { main.innerHTML = stockShell(); bindStock(); }
+    $('#bannerBox').innerHTML = banners();
+    renderChips(); renderItems();
+  } else {
+    const V = { req: viewReq, lend: viewLend, rec: viewRec, more: viewMore }[S.view];
+    main.innerHTML = banners() + (V ? V() : '');
+    observePhotos(main);
+  }
+  renderFloat();
+}
+document.addEventListener('focusout', () => { if (S.dirty) { S.dirty = false; setTimeout(render, 50); } });
+
+function renderTop() {
+  const el = $('#sync'); let cls = '', txt = '';
+  if (!DB) { txt = '连接中…'; }
+  else if (DB.mode === 'local') { cls = 'off'; txt = '本地演示（数据只在这部手机）'; }
+  else if (S.err) { cls = 'err'; txt = '同步出错'; }
+  else if (!navigator.onLine) { cls = 'off'; txt = '离线' + (S.sync.last ? `，上次同步 ${fmtHM(S.sync.last)}` : '') + (S.sync.pending ? '，有改动待上传' : ''); }
+  else if (S.sync.pending) { cls = 'off'; txt = '正在上传改动…'; }
+  else if (S.sync.cache) { txt = '连接中…'; }
+  else { cls = 'ok'; txt = '已同步'; }
+  el.className = 'sync ' + cls; el.querySelector('span').textContent = txt;
+  $('#meBtn').textContent = me ? `${me.name}（${ROLES[me.role]}）` : '选择身份';
+}
+function banners() {
+  let h = '';
+  if (DB && DB.mode === 'local') h += `<div class="banner">本地演示模式：数据只存在这部手机。接上 Firebase 后会变成多人实时同步。</div>`;
+  if (S.err) h += `<div class="banner err">${esc(S.err)}</div>`;
+  return h;
+}
+function tabsFor(r) {
+  return r === 'keeper' ? ['stock', 'req', 'lend', 'rec', 'more']
+    : r === 'user' ? ['stock', 'req', 'lend']
+    : r === 'buyer' ? ['stock', 'req'] : ['stock', 'lend'];
+}
+const TABN = { stock: '库存', req: '申报', lend: '借出', rec: '记录', more: '更多' };
+function badgeFor(t) {
+  if (t !== 'req' || !me) return 0;
+  if (me.role === 'keeper') return S.reqs.filter(r => (r.kind === 'use' && r.status === 'pending') || (r.kind === 'buy' && r.status === 'arrived')).length;
+  if (me.role === 'buyer') return S.reqs.filter(r => r.kind === 'buy' && (r.status === 'pending' || r.status === 'ordered')).length;
+  return 0;
+}
+function renderTabs() {
+  const tabs = tabsFor(me ? me.role : 'viewer');
+  if (!tabs.includes(S.view)) S.view = 'stock';
+  $('#tabs').innerHTML = tabs.map(t => { const b = badgeFor(t); return `<button data-tab="${t}" class="${S.view === t ? 'on' : ''}">${TABN[t]}${b ? `<span class="badge">${b}</span>` : ''}</button>`; }).join('');
+}
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; S.view = b.dataset.tab; scrollTo(0, 0); doRender(); });
+$('#meBtn').addEventListener('click', () => openIdentity(false));
+
+function people() {
+  const s = new Set();
+  S.recs.forEach(r => r.person && s.add(r.person)); S.lends.forEach(l => l.person && s.add(l.person));
+  S.reqs.forEach(r => r.requester && s.add(r.requester));
+  return [...s];
+}
+function cats() {
+  const m = new Map(); S.items.forEach(i => { if (i.category) m.set(i.category, (m.get(i.category) || 0) + 1); });
+  return [...m.entries()].sort((a, b) => b[1] - a[1]).map(x => x[0]);
+}
+function renderLists() {
+  $('#peopleList').innerHTML = people().map(p => `<option value="${esc(p)}">`).join('');
+  $('#catList').innerHTML = cats().map(c => `<option value="${esc(c)}">`).join('');
+}
+
+/* ---------- 库存页 ---------- */
+function stockShell() {
+  return `<div id="stockShell"><div id="bannerBox"></div>
+    <div class="searchbar"><input id="q" type="search" enterkeyhint="search" placeholder="搜物品名、别名、规格" value="${esc(S.q)}" autocomplete="off"></div>
+    <div class="chips" id="chips"></div><div id="itemList"></div></div>`;
+}
+function bindStock() {
+  $('#q').addEventListener('input', e => { S.q = e.target.value; renderItems(); });
+  $('#chips').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; S.cat = b.dataset.cat; renderChips(); renderItems(); });
+}
+function renderChips() {
+  const list = ['全部', ...(S.items.some(i => (i.stock || 0) < 0) ? ['库存为负'] : []), ...(S.items.some(i => i.returnable) ? ['需归还'] : []), ...cats()];
+  if (!list.includes(S.cat)) S.cat = '全部';
+  $('#chips').innerHTML = list.map(c => `<button class="chip ${c === S.cat ? 'on' : ''}" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
+}
+function matchQ(it, q) {
+  if (!q) return true;
+  const hay = [it.name, it.alias, it.spec, it.category].join(' ').toLowerCase();
+  return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
+}
+function filteredItems() {
+  return S.items.filter(it => {
+    if (S.cat === '库存为负' && !((it.stock || 0) < 0)) return false;
+    if (S.cat === '需归还' && !it.returnable) return false;
+    if (!['全部', '库存为负', '需归还'].includes(S.cat) && it.category !== S.cat) return false;
+    return matchQ(it, S.q.trim());
+  }).sort((a, b) => (b.lu || b.t || 0) - (a.lu || a.t || 0));
+}
+function thumb(it, cls = 'thumb') {
+  const key = it.id + ':' + (it.pv || 0);
+  if (it.hasPhoto && photoCache.has(key)) return `<div class="${cls}"><img src="${photoCache.get(key)}" alt=""></div>`;
+  const ch = esc((it.name || '?').trim().charAt(0));
+  return `<div class="${cls}" ${it.hasPhoto ? `data-ph="${it.id}" data-pv="${it.pv || 0}"` : ''}>${ch}</div>`;
+}
+function rowHtml(it) {
+  const neg = (it.stock || 0) < 0;
+  const sub = [it.spec, it.category].filter(Boolean).join('  ');
+  const lent = it.lent || 0;
+  return `<button class="row" data-item="${it.id}">${thumb(it)}
+    <div class="mid"><div class="nm">${esc(it.name)}</div><div class="sub">${esc(sub) || '&nbsp;'}</div></div>
+    <div class="qty"><b class="num ${neg ? 'neg' : ''}">${fmt(it.stock)}</b><small>${esc(it.unit || '')}${lent > 0 ? `，借出 ${fmt(lent)}` : ''}</small></div></button>`;
+}
+function renderItems() {
+  const el = $('#itemList'); if (!el) return;
+  const list = filteredItems();
+  if (!S.items.length) {
+    el.innerHTML = `<div class="empty">${isKeeper() ? '仓库里还没有物品。<br>点右下角「新物品」添加，或在「更多」里导入 Excel。' : '库管员还没有录入物品。'}</div>`;
+  } else if (!list.length) {
+    el.innerHTML = `<div class="empty">没有找到${S.q ? `「${esc(S.q)}」` : '符合条件的物品'}。${isKeeper() ? '<br><button class="link" data-act="newItemQ">新建这样物品</button>' : ''}</div>`;
+  } else {
+    el.innerHTML = `<div class="list">${list.map(rowHtml).join('')}</div><p class="foot">共 ${list.length} 样</p>`;
+  }
+  observePhotos(el);
+}
+function renderFloat() {
+  let h = '';
+  if (S.view === 'stock' && isKeeper()) h = `<button class="fab" data-act="newItem">＋ 新物品</button>`;
+  if (S.view === 'stock' && me && me.role === 'user' && cart.length) h = `<div class="cartbar"><span>申报清单 ${cart.length} 样</span><button class="btn" data-act="openCart">查看并发送</button></div>`;
+  $('#float').innerHTML = h;
+}
+$('#float').addEventListener('click', e => { const b = e.target.closest('[data-act]'); if (b) ACT[b.dataset.act] && ACT[b.dataset.act](b.dataset.id, b); });
+
+/* ---------- 照片 ---------- */
+const photoCache = new Map(), photoLoading = new Map();
+async function loadPhoto(id, pv) {
+  const key = id + ':' + (pv || 0);
+  if (photoCache.has(key)) return photoCache.get(key);
+  if (photoLoading.has(key)) return photoLoading.get(key);
+  const p = DB.get('photos', id).then(d => { const src = d && d.img; if (src) photoCache.set(key, src); photoLoading.delete(key); return src; }).catch(() => { photoLoading.delete(key); return null; });
+  photoLoading.set(key, p); return p;
+}
+let io;
+function observePhotos(root) {
+  if (!io) io = new IntersectionObserver(es => es.forEach(e => {
+    if (!e.isIntersecting) return; io.unobserve(e.target);
+    const el = e.target; loadPhoto(el.dataset.ph, el.dataset.pv).then(src => { if (src) el.innerHTML = `<img src="${src}" alt="">`; });
+  }), { rootMargin: '300px' });
+  root.querySelectorAll('[data-ph]').forEach(el => io.observe(el));
+}
+async function compress(file, max = 640, q = 0.6) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const s = Math.min(1, max / Math.max(img.width, img.height));
+    const c = document.createElement('canvas'); c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    return c.toDataURL('image/jpeg', q);
+  } finally { URL.revokeObjectURL(url); }
+}
+function savePhoto(it, src) {
+  const pv = now();
+  photoCache.set(it.id + ':' + pv, src);
+  DB.commit([{ op: 'set', c: 'photos', id: it.id, d: { img: src, t: pv } }, itemUpd(it.id, { hasPhoto: true, pv })]);
+}
+const camInput = (attr = '') => `<input type="file" accept="image/*" capture="environment" ${attr}>`;
+
+/* ---------- 弹出面板 ---------- */
+function openSheet(html, mount, lock) {
+  closeSheet(); document.querySelectorAll('.toast').forEach(x => x.remove());
+  const m = document.createElement('div'); m.className = 'mask';
+  m.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${html}</div>`;
+  m.addEventListener('click', e => { if (lock) return; if (e.target === m || e.target.closest('[data-close]')) closeSheet(); });
+  document.body.appendChild(m);
+  const sh = m.querySelector('.sheet'); observePhotos(sh); mount && mount(sh); return sh;
+}
+function closeSheet() { document.querySelectorAll('.mask').forEach(x => x.remove()); }
+const head = (title, sub) => `<div class="sh"><div><h2>${title}</h2>${sub ? `<div class="sub" style="white-space:normal">${sub}</div>` : ''}</div><button class="x" data-close aria-label="关闭">×</button></div>`;
+const stepper = (name, val = 1) => `<div class="stepper" data-step><button type="button" data-d="-1" aria-label="减">−</button><input name="${name}" inputmode="decimal" value="${val}" autocomplete="off"><button type="button" data-d="1" aria-label="加">＋</button></div>`;
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-step] [data-d]'); if (!b) return;
+  const inp = b.parentElement.querySelector('input'); const v = readNum(inp.value) || 0;
+  inp.value = fmt(Math.max(0, v + Number(b.dataset.d)));
+});
+let tt;
+function toast(msg, undo) {
+  document.querySelectorAll('.toast').forEach(x => x.remove()); clearTimeout(tt);
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status');
+  t.innerHTML = `<span>${esc(msg)}</span>${undo ? '<button>撤销</button>' : ''}`;
+  if (undo) t.querySelector('button').onclick = () => { t.remove(); undo(); };
+  document.body.appendChild(t); tt = setTimeout(() => t.remove(), undo ? 6000 : 2600);
+}
+
+/* ---------- 身份（测试版用，正式版换成名单登录） ---------- */
+function openIdentity(first) {
+  let role = me ? me.role : 'keeper';
+  openSheet(`${first ? `<div class="sh"><div><h2>你是谁？</h2><div class="sub" style="white-space:normal">测试版用来模拟不同的人，正式版会换成名单登录。</div></div></div>` : head('切换身份', '测试版用来模拟不同的人，正式版会换成名单登录。')}
+    <div class="field"><label>身份</label><div class="seg" id="roles">${Object.entries(ROLES).map(([k, v]) => `<button data-r="${k}" class="${k === role ? 'on' : ''}">${v}</button>`).join('')}</div></div>
+    <div class="field"><label>名字</label><input id="nm" list="peopleList" value="${esc(me ? me.name : '')}" placeholder="比如：张三"></div>
+    <div class="btns"><button class="btn pri" id="ok">确定</button></div>`, sh => {
+    sh.querySelector('#roles').addEventListener('click', e => { const b = e.target.closest('[data-r]'); if (!b) return; role = b.dataset.r; sh.querySelectorAll('#roles button').forEach(x => x.classList.toggle('on', x === b)); });
+    sh.querySelector('#ok').onclick = () => {
+      const name = sh.querySelector('#nm').value.trim();
+      if (!name) { alert('请填写名字'); return; }
+      me = { role, name }; localStorage.setItem('ck_me', JSON.stringify(me));
+      closeSheet(); S.view = 'stock'; $('#main').innerHTML = ''; render();
+    };
+  }, first);
+}
+
+/* ---------- 物品详情 ---------- */
+function openItem(id) {
+  const it = item(id); if (!it) return;
+  const k = isKeeper(), u = me && me.role === 'user';
+  const uses = S.recs.filter(r => r.itemId === id && (r.type === 'out' || r.type === 'lend')).slice(0, 3);
+  const lastLend = S.lends.filter(l => l.itemId === id)[0];
+  const total = (it.stock || 0) + (it.lent || 0);
+  const stats = `<div class="stats"><div><b class="num ${(it.stock || 0) < 0 ? 'neg' : ''}">${fmt(it.stock)}</b><span>在库（${esc(it.unit || '')}）</span></div>
+    ${it.returnable ? `<div><b class="num">${fmt(it.lent)}</b><span>借出</span></div>${(it.broken || 0) > 0 ? `<div><b class="num">${fmt(it.broken)}</b><span>损坏</span></div>` : ''}<div><b class="num">${fmt(total)}</b><span>总数</span></div>` : ''}</div>`;
+  const photo = `<div class="photo ${it.hasPhoto ? '' : 'none'}" id="ph">${it.hasPhoto ? '' : (k ? '还没有照片' : '没有照片')}
+    ${k ? `<label class="cam">${it.hasPhoto ? '换照片' : '拍照'}${camInput('id="camIn"')}</label>` : ''}</div>`;
+  const keeperBox = k ? `
+    <div class="field"><label>数量（${esc(it.unit || '')}）</label>${stepper('q', 1)}</div>
+    <div class="field"><label>领用人（出库时填，可不填）</label><input id="person" list="peopleList" placeholder="名字或工票号"></div>
+    <div class="btns"><button class="btn in" id="bIn">入库</button><button class="btn pri" id="bOut">${it.returnable ? '借出' : '出库'}</button></div>
+    <div class="btns"><button class="btn sm line2" id="bAdj">盘点</button><button class="btn sm line2" id="bEdit">编辑</button><button class="btn sm line2" id="bMerge">合并</button></div>` : '';
+  const userBox = u ? `<div class="field"><label>要领多少（${esc(it.unit || '')}）</label>${stepper('q', 1)}</div>
+    <div class="btns"><button class="btn pri" id="bCart">加入申报清单</button></div>` : '';
+  const sh = openSheet(`${head(esc(it.name), esc([it.spec, it.category, it.alias ? '别名：' + it.alias : '', it.returnable ? '需归还' : ''].filter(Boolean).join('　')))}
+    ${photo}${stats}${keeperBox}${userBox}
+    <div class="sec"><h3>最近领用</h3>${uses.length ? uses.map(r => `<div class="mini"><span>${esc(r.person || '未填领用人')}　${fmt(r.qty)} ${esc(r.unit || '')}${r.type === 'lend' ? '（借）' : ''}</span><span>${fmtT(r.t)}</span></div>`).join('') : '<div class="mini"><span>还没有领用记录</span></div>'}</div>
+    <div class="sec"><h3>最后一次借出</h3>${lastLend ? `<div class="mini"><span>${esc(lastLend.person || '未填')}　${fmt(lastLend.qty)} ${esc(lastLend.unit || '')}　${lastLend.open ? `<span class="tag y">未还 ${fmt(lastLend.qty - lastLend.returned)}</span>` : '<span class="tag g">已还清</span>'}</span><span>${fmtT(lastLend.t)}</span></div>` : '<div class="mini"><span>还没有借出记录</span></div>'}</div>`,
+  sh => {
+    if (it.hasPhoto) loadPhoto(it.id, it.pv).then(src => { const ph = sh.querySelector('#ph'); if (src && ph) ph.insertAdjacentHTML('afterbegin', `<img src="${src}" alt="">`); });
+    const cam = sh.querySelector('#camIn');
+    if (cam) cam.onchange = async () => { const f = cam.files[0]; if (!f) return; const src = await compress(f); savePhoto(it, src); toast('照片已保存'); openItem(it.id); };
+    const qv = () => readNum(sh.querySelector('[name=q]').value);
+    if (k) {
+      sh.querySelector('#bIn').onclick = () => {
+        const q = qv(); if (!(q > 0)) return alert('请填写大于 0 的数量');
+        const x = opsIn(it, q); DB.commit(x.ops); closeSheet();
+        toast(`已入库 ${it.name} ${fmt(q)} ${it.unit || ''}`, () => deleteRecord(x.rec, true));
+      };
+      sh.querySelector('#bOut').onclick = () => {
+        const q = qv(); if (!(q > 0)) return alert('请填写大于 0 的数量');
+        if (q > (it.stock || 0) && !confirm(`在库只有 ${fmt(it.stock)} ${it.unit || ''}，确定${it.returnable ? '借出' : '出库'} ${fmt(q)} 吗？库存会变成负数。`)) return;
+        const person = sh.querySelector('#person').value.trim();
+        const x = opsOut(it, q, person); DB.commit(x.ops); closeSheet();
+        toast(`已${it.returnable ? '借出' : '出库'} ${it.name} ${fmt(q)} ${it.unit || ''}`, () => deleteRecord(x.rec, true));
+      };
+      sh.querySelector('#bAdj').onclick = () => openAdjust(it);
+      sh.querySelector('#bEdit').onclick = () => openItemForm(it);
+      sh.querySelector('#bMerge').onclick = () => openMerge(it);
+    }
+    if (u) sh.querySelector('#bCart').onclick = () => {
+      const q = qv(); if (!(q > 0)) return alert('请填写大于 0 的数量');
+      const ex = cart.find(c => c.itemId === it.id); if (ex) ex.qty = r3(ex.qty + q); else cart.push({ itemId: it.id, qty: q });
+      saveCart(); closeSheet(); render(); toast(`已加入申报清单：${it.name} ${fmt(q)} ${it.unit || ''}`);
+    };
+  });
+}
+
+function openAdjust(it) {
+  openSheet(`${head('盘点：' + esc(it.name), '数一数仓库里实际有多少，填进去。系统会自动记下差额。')}
+    <div class="big num">系统数量 ${fmt(it.stock)} ${esc(it.unit || '')}</div>
+    <div class="field"><label>实际数量（${esc(it.unit || '')}）</label>${stepper('q', fmt(Math.max(0, it.stock || 0)))}</div>
+    <div class="btns"><button class="btn pri" id="ok">保存盘点</button></div>`, sh => {
+    sh.querySelector('#ok').onclick = () => {
+      const a = readNum(sh.querySelector('[name=q]').value); if (!(a >= 0)) return alert('请填写数量');
+      const diff = r3(a - (it.stock || 0));
+      if (!diff) { closeSheet(); toast('数量一致，不用改'); return; }
+      const r = recOp({ type: 'adjust', ...base(it), qty: diff, before: it.stock || 0, after: a });
+      DB.commit([itemUpd(it.id, { stock: INC(diff), lu: now() }), r.op]); closeSheet();
+      toast(`已盘点：${diff > 0 ? '+' : ''}${fmt(diff)} ${it.unit || ''}`, () => deleteRecord({ id: r.id, ...r.op.d }, true));
+    };
+  });
+}
+
+/* ---------- 新建 / 编辑物品 ---------- */
+const UNITS = ['个', '根', '把', '卷', '米', '公斤', '吨', '盒', '包', '袋', '桶', '张', '套', '台', '双', '块', '箱'];
+function similar(name, exceptId) {
+  const n = name.trim().toLowerCase(); if (n.length < 1) return [];
+  return S.items.filter(i => i.id !== exceptId && [i.name, i.alias].some(v => { v = String(v || '').toLowerCase(); return v && (v.includes(n) || n.includes(v.split(/[,，、 ]/)[0] || '###')); })).slice(0, 5);
+}
+function openItemForm(it, preset) {
+  const edit = !!it; it = it || {}; preset = preset || {};
+  let photo = null; let retTouched = edit;
+  openSheet(`${head(edit ? '编辑物品' : '新物品')}
+    <div class="field"><label>名称（必填）</label><input id="fName" value="${esc(it.name || preset.name || '')}" placeholder="比如：扎丝"><div id="simBox"></div></div>
+    <div class="field"><label>规格 / 型号</label><input id="fSpec" value="${esc(it.spec || '')}" placeholder="比如：DN50、24mm"></div>
+    <div class="field"><label>单位</label><input id="fUnit" value="${esc(it.unit || '')}" placeholder="可以直接写"><div class="quick" id="units">${UNITS.map(u => `<button type="button">${u}</button>`).join('')}</div></div>
+    <div class="field"><label>分类</label><input id="fCat" list="catList" value="${esc(it.category || '')}" placeholder="比如：工具、管材、劳保"></div>
+    <div class="field"><label>别名（其他叫法，用逗号隔开）</label><input id="fAlias" value="${esc(it.alias || '')}" placeholder="比如：绑丝，铁丝"></div>
+    <div class="field"><label class="check"><input type="checkbox" id="fRet" ${it.returnable ? 'checked' : ''}> 领用后需要归还（工具类）</label></div>
+    ${edit ? '' : `<div class="field"><label>现有数量</label>${stepper('q', 0)}</div>
+    <div class="field"><label>照片（可以以后再拍）</label><div class="photo small" id="pv">还没拍</div><label class="btn sm line2 filebtn">拍照${camInput('id="fCam"')}</label></div>`}
+    <div class="btns"><button class="btn pri" id="ok">${edit ? '保存' : '添加'}</button></div>`, sh => {
+    const g = s => sh.querySelector(s);
+    const sim = () => { const l = similar(g('#fName').value, it.id); g('#simBox').innerHTML = l.length ? `<div class="warnbox">可能已经有了：${l.map(i => esc(i.name + (i.spec ? ' ' + i.spec : ''))).join('、')}</div>` : ''; };
+    g('#fName').addEventListener('input', sim); sim();
+    g('#units').addEventListener('click', e => { if (e.target.tagName === 'BUTTON') g('#fUnit').value = e.target.textContent; });
+    g('#fRet').addEventListener('change', () => { retTouched = true; });
+    g('#fCat').addEventListener('input', () => { if (!retTouched) g('#fRet').checked = (S.settings.returnCats || []).includes(g('#fCat').value.trim()); });
+    const cam = g('#fCam');
+    if (cam) cam.onchange = async () => { const f = cam.files[0]; if (!f) return; photo = await compress(f); g('#pv').innerHTML = `<img src="${photo}" alt="">`; };
+    g('#ok').onclick = () => {
+      const d = { name: g('#fName').value.trim(), spec: g('#fSpec').value.trim(), unit: g('#fUnit').value.trim(), category: g('#fCat').value.trim(), alias: g('#fAlias').value.trim(), returnable: g('#fRet').checked };
+      if (!d.name) return alert('请填写名称');
+      if (edit) {
+        DB.commit([itemUpd(it.id, d)]); closeSheet(); toast('已保存'); return;
+      }
+      const q = readNum(sh.querySelector('[name=q]').value) || 0;
+      const id = uid(); const t = now();
+      const ops = [{ op: 'set', c: 'items', id, d: { ...d, stock: q, lent: 0, broken: 0, t, lu: t, hasPhoto: !!photo, pv: photo ? t : 0 } }];
+      if (photo) { photoCache.set(id + ':' + t, photo); ops.push({ op: 'set', c: 'photos', id, d: { img: photo, t } }); }
+      if (q > 0) ops.push(recOp({ type: 'new', itemId: id, name: d.name, spec: d.spec, unit: d.unit, qty: q, note: '新建物品' }).op);
+      DB.commit(ops); closeSheet(); toast(`已添加 ${d.name}`);
+    };
+  });
+}
+
+function openMerge(src) {
+  openSheet(`${head('合并重复物品', `把「${esc(src.name)}」并到另一样物品里，数量相加，「${esc(src.name)}」会被移除。`)}
+    <div class="field"><input id="mq" placeholder="搜要并入的物品"></div><div id="ml"></div>`, sh => {
+    const draw = () => {
+      const q = sh.querySelector('#mq').value.trim();
+      const l = S.items.filter(i => i.id !== src.id && matchQ(i, q)).slice(0, 30);
+      sh.querySelector('#ml').innerHTML = `<div class="sugg">${l.map(i => `<button data-id="${i.id}">${esc(i.name)} ${esc(i.spec || '')}　<span class="sub">${fmt(i.stock)} ${esc(i.unit || '')}</span></button>`).join('') || '<button disabled>没有找到</button>'}</div>`;
+    };
+    sh.querySelector('#mq').addEventListener('input', draw); draw();
+    sh.querySelector('#ml').addEventListener('click', e => {
+      const b = e.target.closest('[data-id]'); if (!b) return; const dst = item(b.dataset.id);
+      if ((src.unit || '') !== (dst.unit || '') && !confirm(`单位不一样（${src.unit || '无'} / ${dst.unit || '无'}），数量会直接相加，确定合并吗？`)) return;
+      if (!confirm(`确定把「${src.name}」并到「${dst.name}」？`)) return;
+      const ops = [itemUpd(dst.id, { stock: INC(src.stock || 0), lent: INC(src.lent || 0), broken: INC(src.broken || 0), lu: now() }),
+        itemUpd(src.id, { deleted: true, mergedInto: dst.id })];
+      S.lends.filter(l => l.itemId === src.id && l.open).forEach(l => ops.push({ op: 'upd', c: 'lends', id: l.id, d: { itemId: dst.id, name: dst.name } }));
+      ops.push(recOp({ type: 'merge', ...base(dst), qty: src.stock || 0, note: `并入：${src.name}${src.spec ? ' ' + src.spec : ''}` }).op);
+      DB.commit(ops); closeSheet(); toast('已合并');
+    });
+  });
+}
+
+/* ---------- 申报 ---------- */
+const USE_ST = { pending: ['待处理', 'y'], done: ['已发放', 'g'], partial: ['部分发放', 'b'], rejected: ['已拒绝', 'r'] };
+const BUY_ST = { pending: ['待采购', 'y'], ordered: ['已下单', 'b'], arrived: ['已到货', 'g'], stocked: ['已入库', ''], rejected: ['已拒绝', 'r'] };
+const stTag = (r) => { const m = (r.kind === 'buy' ? BUY_ST : USE_ST)[r.status] || [r.status, '']; return `<span class="tag ${m[1]}">${m[0]}</span>`; };
+
+function useCard(r, act) {
+  const lines = r.lines.map((l, i) => {
+    const it = item(l.itemId); const st = it ? it.stock || 0 : 0;
+    const right = act ? `<input data-li="${i}" inputmode="decimal" value="${fmt(Math.min(l.qty, Math.max(st, 0)) || 0)}" aria-label="发放数量">`
+      : (r.given ? `<span class="num">发 ${fmt(r.given[i] || 0)}</span>` : '');
+    return `<div class="line"><div class="mid">${esc(l.name)} ${esc(l.spec || '')}<small>申请 ${fmt(l.qty)} ${esc(l.unit || '')}${act ? `，在库 <b class="${st < l.qty ? 'neg' : ''}">${fmt(st)}</b>` : ''}</small></div>${right}</div>`;
+  }).join('');
+  return `<div class="card"><div class="t1"><span class="who">${esc(r.requester)}</span><span>${stTag(r)}</span></div>
+    <div class="when">${fmtT(r.t)}${r.handledBy ? `，${esc(r.handledBy)} 处理` : ''}</div>${lines}
+    ${r.note ? `<div class="note">备注：${esc(r.note)}</div>` : ''}${r.reason ? `<div class="note">拒绝原因：${esc(r.reason)}</div>` : ''}
+    ${act ? `<div class="btns"><button class="btn warn sm" data-act="rejectUse" data-id="${r.id}">拒绝</button><button class="btn pri sm" data-act="approveUse" data-id="${r.id}">按填写数量发放</button></div>` : ''}</div>`;
+}
+function buyCard(r, actions) {
+  const lines = r.lines.map(l => `<div class="line">${l.photo ? `<div class="thumb"><img src="${l.photo}" alt=""></div>` : ''}<div class="mid">${esc(l.name)} ${esc(l.spec || '')}${l.itemId ? '' : ' <span class="tag">清单外</span>'}<small>${fmt(l.qty)} ${esc(l.unit || '')}</small></div></div>`).join('');
+  return `<div class="card"><div class="t1"><span class="who">采购申报</span><span>${stTag(r)}</span></div>
+    <div class="when">${esc(r.requester)}　${fmtT(r.t)}</div>${lines}${r.note ? `<div class="note">备注：${esc(r.note)}</div>` : ''}
+    ${actions ? `<div class="btns">${actions}</div>` : ''}</div>`;
+}
+function viewReq() {
+  const role = me.role;
+  if (role === 'keeper') {
+    const pend = S.reqs.filter(r => r.kind === 'use' && r.status === 'pending');
+    const buys = S.reqs.filter(r => r.kind === 'buy').slice(0, 30);
+    const done = S.reqs.filter(r => r.kind === 'use' && r.status !== 'pending').slice(0, 20);
+    return `<div class="h"><h2>待处理领用（${pend.length}）</h2></div>
+      ${pend.length ? pend.map(r => useCard(r, true)).join('') : '<div class="card empty" style="padding:20px">没有待处理的领用申报</div>'}
+      <div class="h"><h2>采购申报</h2><button class="btn sm pri" data-act="newBuy">＋ 新建</button></div>
+      ${buys.length ? buys.map(r => buyCard(r, r.status === 'arrived' ? `<button class="btn in sm" data-act="stockBuy" data-id="${r.id}">一键入库</button>` : '')).join('') : '<div class="card empty" style="padding:20px">还没有采购申报</div>'}
+      ${done.length ? `<div class="h"><h2>已处理的领用</h2></div>${done.map(r => useCard(r, false)).join('')}` : ''}`;
+  }
+  if (role === 'buyer') {
+    const buys = S.reqs.filter(r => r.kind === 'buy');
+    const act = r => r.status === 'pending' ? `<button class="btn warn sm" data-act="buyReject" data-id="${r.id}">拒绝</button><button class="btn pri sm" data-act="buyOrdered" data-id="${r.id}">已下单</button>`
+      : r.status === 'ordered' ? `<button class="btn in sm" data-act="buyArrived" data-id="${r.id}">已到货</button>` : '';
+    return `<div class="h"><h2>采购申报</h2></div>${buys.length ? buys.map(r => buyCard(r, act(r))).join('') : '<div class="empty">库管员还没有提交采购申报</div>'}`;
+  }
+  // 领用人
+  const mine = S.reqs.filter(r => r.kind === 'use' && r.requester === me.name);
+  return `<div class="h"><h2>我的领用申报</h2>${cart.length ? `<button class="btn sm pri" data-act="openCart">清单（${cart.length}）</button>` : ''}</div>
+    <div class="note" style="margin:0 2px 10px">在「库存」里点物品，加入申报清单后发送给库管员。</div>
+    ${mine.length ? mine.map(r => useCard(r, false)).join('') : '<div class="empty">还没有申报</div>'}`;
+}
+
+function openCart() {
+  const draw = () => cart.map((c, i) => { const it = item(c.itemId); return `<div class="line"><div class="mid">${esc(it ? it.name : '已删除的物品')} ${esc(it && it.spec || '')}<small>${esc(it && it.unit || '')}</small></div><input data-ci="${i}" inputmode="decimal" value="${fmt(c.qty)}"><button class="x" data-rm="${i}" aria-label="移除">×</button></div>`; }).join('') || '<div class="empty">清单是空的</div>';
+  openSheet(`${head('申报清单', '发送后只有你和库管员能看到。')}<div id="cl">${draw()}</div>
+    <div class="field"><label>备注（可不填）</label><input id="cn" placeholder="比如：二号营地用"></div>
+    <div class="btns"><button class="btn pri" id="send">发送给库管员</button></div>`, sh => {
+    sh.querySelector('#cl').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; cart.splice(+b.dataset.rm, 1); saveCart(); sh.querySelector('#cl').innerHTML = draw(); render(); });
+    sh.querySelector('#cl').addEventListener('change', e => { const i = e.target.dataset.ci; if (i == null) return; const v = readNum(e.target.value); if (v > 0) { cart[+i].qty = v; saveCart(); } });
+    sh.querySelector('#send').onclick = () => {
+      sh.querySelectorAll('[data-ci]').forEach(inp => { const v = readNum(inp.value); if (v > 0) cart[+inp.dataset.ci].qty = v; });
+      const lines = cart.map(c => { const it = item(c.itemId); return it ? { ...base(it), qty: c.qty } : null; }).filter(Boolean);
+      if (!lines.length) return alert('清单是空的');
+      DB.commit([{ op: 'set', c: 'requests', id: uid(), d: clean({ kind: 'use', t: now(), requester: me.name, lines, note: sh.querySelector('#cn').value.trim(), status: 'pending' }) }]);
+      cart = []; saveCart(); closeSheet(); S.view = 'req'; render(); toast('已发送给库管员');
+    };
+  });
+}
+
+function openNewBuy() {
+  const lines = []; let pick = null, photo = null;
+  openSheet(`${head('新建采购申报', '提交给采购。清单里没有的东西可以拍张照片。')}
+    <div class="field"><label>物品</label><input id="bn" placeholder="搜清单里的物品，或直接写新名称" autocomplete="off"><div id="bs"></div></div>
+    <div class="field" id="newFields" hidden><label>规格 / 单位（清单外物品）</label><div style="display:flex;gap:8px"><input id="bsp" placeholder="规格"><input id="bu" placeholder="单位" style="max-width:110px"></div>
+      <div style="margin-top:8px"><label class="btn sm line2 filebtn">拍照${camInput('id="bc"')}</label> <span id="bpv" class="sub"></span></div></div>
+    <div class="field"><label>数量</label>${stepper('bq', 1)}</div>
+    <div class="btns"><button class="btn line2" id="add">加到清单</button></div>
+    <div class="sec"><h3>采购清单</h3><div id="bl"><div class="mini"><span>还没有添加</span></div></div></div>
+    <div class="field"><label>备注（可不填）</label><input id="bnote"></div>
+    <div class="btns"><button class="btn pri" id="send">提交给采购</button></div>`, sh => {
+    const g = s => sh.querySelector(s);
+    const drawSug = () => {
+      const q = g('#bn').value.trim();
+      g('#newFields').hidden = !q || !!pick;
+      if (!q || pick) { g('#bs').innerHTML = ''; return; }
+      const l = S.items.filter(i => matchQ(i, q)).slice(0, 6);
+      g('#bs').innerHTML = l.length ? `<div class="sugg">${l.map(i => `<button data-id="${i.id}">${esc(i.name)} ${esc(i.spec || '')}　<span class="sub">在库 ${fmt(i.stock)} ${esc(i.unit || '')}</span></button>`).join('')}</div>` : '';
+    };
+    g('#bn').addEventListener('input', () => { pick = null; drawSug(); });
+    g('#bs').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (!b) return; pick = item(b.dataset.id); g('#bn').value = pick.name + (pick.spec ? ' ' + pick.spec : ''); drawSug(); });
+    g('#bc').onchange = async () => { const f = g('#bc').files[0]; if (!f) return; photo = await compress(f, 480, 0.55); g('#bpv').textContent = '已拍照'; };
+    const drawList = () => { g('#bl').innerHTML = lines.length ? lines.map((l, i) => `<div class="mini"><span>${esc(l.name)} ${esc(l.spec || '')} ${fmt(l.qty)} ${esc(l.unit || '')}${l.itemId ? '' : '（清单外）'}</span><button class="link" data-rm="${i}">移除</button></div>`).join('') : '<div class="mini"><span>还没有添加</span></div>'; };
+    g('#bl').addEventListener('click', e => { const b = e.target.closest('[data-rm]'); if (!b) return; lines.splice(+b.dataset.rm, 1); drawList(); });
+    g('#add').onclick = () => {
+      const q = readNum(sh.querySelector('[name=bq]').value); if (!(q > 0)) return alert('请填写数量');
+      if (pick) lines.push({ ...base(pick), qty: q });
+      else {
+        const name = g('#bn').value.trim(); if (!name) return alert('请填写物品名称');
+        if (photo && lines.filter(l => l.photo).length >= 8) return alert('一张申报最多带 8 张照片');
+        lines.push(clean({ itemId: null, name, spec: g('#bsp').value.trim(), unit: g('#bu').value.trim(), qty: q, photo: photo || undefined }));
+      }
+      pick = null; photo = null; g('#bn').value = ''; g('#bsp').value = ''; g('#bu').value = ''; g('#bpv').textContent = ''; sh.querySelector('[name=bq]').value = 1; drawSug(); drawList();
+    };
+    g('#send').onclick = () => {
+      if (!lines.length) return alert('先把物品加到清单');
+      DB.commit([{ op: 'set', c: 'requests', id: uid(), d: clean({ kind: 'buy', t: now(), requester: me.name, lines, note: g('#bnote').value.trim(), status: 'pending' }) }]);
+      closeSheet(); toast('已提交给采购');
+    };
+  });
+}
+
+/* ---------- 借出 ---------- */
+function viewLend() {
+  const role = me ? me.role : 'viewer';
+  let open = S.lends.filter(l => l.open);
+  if (role === 'user') {
+    open = open.filter(l => l.person === me.name);
+    return `<div class="h"><h2>我借的东西（${open.length}）</h2></div>
+      ${open.length ? `<div class="list">${open.map(l => lendRow(l, false)).join('')}</div>` : '<div class="empty">你现在没有借着的东西</div>'}`;
+  }
+  open = open.slice().sort((a, b) => S.lendSort === 'person' ? String(a.person).localeCompare(String(b.person), 'zh') || a.t - b.t : a.t - b.t);
+  return `<div class="h"><h2>借出中（${open.length}）</h2><div class="seg"><button class="${S.lendSort === 'time' ? 'on' : ''}" data-act="lendSort" data-id="time">按天数</button><button class="${S.lendSort === 'person' ? 'on' : ''}" data-act="lendSort" data-id="person">按人</button></div></div>
+    ${open.length ? `<div class="list">${open.map(l => lendRow(l, isKeeper())).join('')}</div>` : '<div class="empty">现在没有借出的东西</div>'}`;
+}
+function lendRow(l, click) {
+  const it = item(l.itemId) || { id: l.itemId, name: l.name };
+  const left = r3(l.qty - (l.returned || 0)); const d = daysSince(l.t);
+  return `<${click ? 'button' : 'div'} class="row" ${click ? `data-act="ret" data-id="${l.id}"` : ''}>${thumb(it)}
+    <div class="mid"><div class="nm">${esc(l.name)} ${esc(l.spec || '')}</div><div class="sub">${esc(l.person || '未填')}　${fmtT(l.t)}</div></div>
+    <div class="qty"><b class="num">${fmt(left)}</b><small>${esc(l.unit || '')}，${d ? d + ' 天' : '今天'}</small></div></${click ? 'button' : 'div'}>`;
+}
+function openReturn(l) {
+  const left = r3(l.qty - (l.returned || 0)); let state = '完好';
+  openSheet(`${head('归还：' + esc(l.name), `${esc(l.person || '未填')} 借了 ${fmt(l.qty)} ${esc(l.unit || '')}，还剩 ${fmt(left)} 没还`)}
+    <div class="field"><label>这次还了多少</label>${stepper('q', fmt(left))}</div>
+    <div class="field"><label>状态</label><div class="seg" id="st"><button class="on">完好</button><button>损坏</button><button>丢失</button></div></div>
+    <div class="field"><label>备注（可不填）</label><input id="rn"></div>
+    <div class="btns"><button class="btn in" id="ok">确认归还</button></div>`, sh => {
+    sh.querySelector('#st').addEventListener('click', e => { if (e.target.tagName !== 'BUTTON') return; state = e.target.textContent; sh.querySelectorAll('#st button').forEach(b => b.classList.toggle('on', b === e.target)); });
+    sh.querySelector('#ok').onclick = () => {
+      const q = readNum(sh.querySelector('[name=q]').value); if (!(q > 0)) return alert('请填写数量');
+      if (q > left) return alert(`最多还 ${fmt(left)}`);
+      const it = item(l.itemId); if (!it) return alert('这样物品已被删除');
+      const ops = [{ op: 'upd', c: 'lends', id: l.id, d: { returned: INC(q), open: r3(left - q) > 0 } }];
+      if (state === '完好') ops.push(itemUpd(it.id, { stock: INC(q), lent: INC(-q), lu: now() }));
+      else if (state === '损坏') ops.push(itemUpd(it.id, { lent: INC(-q), broken: INC(q), lu: now() }));
+      else ops.push(itemUpd(it.id, { lent: INC(-q), lu: now() }));
+      const r = recOp({ type: 'return', ...base(it), qty: q, person: l.person, state, lendId: l.id, note: sh.querySelector('#rn').value.trim() });
+      ops.push(r.op); DB.commit(ops); closeSheet();
+      toast(`已归还 ${fmt(q)} ${l.unit || ''}（${state}）`, () => deleteRecord({ id: r.id, ...r.op.d }, true));
+    };
+  });
+}
+
+/* ---------- 记录 ---------- */
+const TYPE = { in: '入库', new: '新建', out: '出库', lend: '借出', return: '归还', adjust: '盘点', merge: '合并' };
+function signed(r) {
+  if (r.type === 'in' || r.type === 'new') return ['+' + fmt(r.qty), 'plus'];
+  if (r.type === 'out' || r.type === 'lend') return ['−' + fmt(r.qty), 'minus'];
+  if (r.type === 'return') return [(r.state === '完好' ? '+' : '') + fmt(r.qty), r.state === '完好' ? 'plus' : ''];
+  if (r.type === 'adjust') return [(r.qty > 0 ? '+' : '−') + fmt(Math.abs(r.qty)), r.qty > 0 ? 'plus' : 'minus'];
+  return [fmt(r.qty), ''];
+}
+function viewRec() {
+  const recs = S.recs.slice(0, 300);
+  if (!recs.length) return '<div class="empty">还没有出入库记录</div>';
+  let h = '', day = '';
+  for (const r of recs) {
+    const d = fmtD(r.t);
+    if (d !== day) { if (day) h += '</div>'; day = d; h += `<div class="day">${d}</div><div class="list">`; }
+    const [s, c] = signed(r);
+    h += `<button class="rec" data-act="rec" data-id="${r.id}"><div class="mid"><div class="nm">${TYPE[r.type] || r.type}　${esc(r.name)} ${esc(r.spec || '')}</div>
+      <div class="sub">${[r.person, r.state, r.type === 'adjust' ? `${fmt(r.before)} → 实际 ${fmt(r.after)}` : '', r.note].filter(Boolean).map(esc).join('，')}${r.person || r.state || r.note || r.type === 'adjust' ? '　' : ''}${fmtHM(r.t)}${r.edited ? '（改过）' : ''}</div></div>
+      <span class="sign num ${c}">${s} <small style="font-size:13px;font-weight:400">${esc(r.unit || '')}</small></span></button>`;
+  }
+  return `<div class="h"><h2>出入库记录</h2></div>` + h + '</div><p class="foot">点一条记录可以修改或删除</p>';
+}
+function openRecord(r) {
+  const canEdit = ['in', 'new', 'out', 'lend'].includes(r.type);
+  const canDel = ['in', 'new', 'out', 'lend', 'return', 'adjust'].includes(r.type);
+  openSheet(`${head(`${TYPE[r.type] || r.type}：${esc(r.name)}`, `${fmtT(r.t)}，${esc(r.by || '')} 登记${r.person ? `，领用人 ${esc(r.person)}` : ''}`)}
+    <div class="big num">${signed(r)[0]} ${esc(r.unit || '')}</div>
+    ${canEdit ? `<div class="field"><label>改成多少</label>${stepper('q', fmt(r.qty))}</div><div class="btns"><button class="btn pri" id="sv">保存修改</button></div>` : ''}
+    ${canDel ? `<div class="btns"><button class="btn warn" id="del">删除这条记录</button></div>` : '<div class="note">这类记录不能修改或删除。</div>'}
+    <div class="note">修改和删除会自动调整库存，原来的内容保存在后台，误删可以找回。</div>`, sh => {
+    const sv = sh.querySelector('#sv');
+    if (sv) sv.onclick = () => { const q = readNum(sh.querySelector('[name=q]').value); if (!(q > 0)) return alert('数量要大于 0，不要这条就删除'); if (editRecordQty(r, q)) closeSheet(); };
+    const del = sh.querySelector('#del');
+    if (del) del.onclick = () => { if (confirm('删除这条记录？库存会自动改回去。') && deleteRecord(r, false)) closeSheet(); };
+  });
+}
+
+/* ---------- 更多 ---------- */
+function viewMore() {
+  const noPhoto = S.items.filter(i => !i.hasPhoto).length;
+  return `<div class="h"><h2>物品</h2></div><div class="menu">
+      <button data-act="newItem">新建物品</button>
+      <button data-act="burst">连拍补照片 <small>${noPhoto} 样没有照片</small></button>
+      <button data-act="retCats">按分类设置"需归还"</button>
+    </div>
+    <div class="h"><h2>表格（WPS / Excel）</h2></div><div class="menu">
+      <button data-act="import">导入物品清单</button>
+      <button data-act="expStock">导出库存</button>
+      <button data-act="expRec">导出出入库记录</button>
+      <button data-act="expReq">导出申报</button>
+      <button data-act="expLend">导出借出清单</button>
+    </div>
+    ${isWeChat() ? '<div class="note" style="margin:-4px 2px 12px">微信里不能下载文件：导出前点右上角「···」，选「在浏览器打开」。</div>' : ''}
+    <div class="h"><h2>后台</h2></div><div class="menu">
+      <button data-act="audit">修改和删除记录 <small>${S.audit.length} 条</small></button>
+      ${DB.mode === 'local' ? '<button data-act="seed">载入示例数据</button><button data-act="wipe">清空本地数据</button>' : ''}
+    </div>
+    <p class="foot">${DB.mode === 'local' ? '本地演示模式' : '已连接云端数据库'}　测试版</p>`;
+}
+function openBurst() {
+  const list = S.items.filter(i => !i.hasPhoto).sort((a, b) => (b.lu || 0) - (a.lu || 0));
+  if (!list.length) return toast('所有物品都有照片了');
+  let i = 0;
+  const sh = openSheet(`${head('连拍补照片', '拍一张自动跳到下一样，不想拍就跳过。')}<div id="bb"></div>`, () => {});
+  const draw = () => {
+    if (i >= list.length) { closeSheet(); toast('全部过了一遍'); return; }
+    const it = list[i];
+    sh.querySelector('#bb').innerHTML = `<div class="sub">第 ${i + 1} / ${list.length} 样</div>
+      <div class="photo">${esc(it.name.charAt(0))}</div>
+      <div class="big">${esc(it.name)} ${esc(it.spec || '')}</div><div class="sub">${esc(it.category || '')}</div>
+      <div class="btns"><button class="btn line2" id="skip">跳过</button><label class="btn pri filebtn" style="flex:1">拍照${camInput('id="bcam"')}</label></div>`;
+    sh.querySelector('#skip').onclick = () => { i++; draw(); };
+    sh.querySelector('#bcam').onchange = async e => { const f = e.target.files[0]; if (!f) return; savePhoto(it, await compress(f)); i++; draw(); };
+  };
+  draw();
+}
+function openRetCats() {
+  const cs = cats();
+  if (!cs.length) return toast('物品还没有分类');
+  const draw = () => cs.map(c => { const on = (S.settings.returnCats || []).includes(c); return `<button data-c="${esc(c)}">${esc(c)}<small>${on ? '需归还' : '不用还'}</small></button>`; }).join('');
+  openSheet(`${head('按分类设置"需归还"', '点一下切换。会同时改这个分类下的所有物品，以后新建的也按这个默认。')}<div class="menu" id="rc">${draw()}</div>`, sh => {
+    sh.querySelector('#rc').addEventListener('click', e => {
+      const b = e.target.closest('[data-c]'); if (!b) return; const c = b.dataset.c;
+      const set = new Set(S.settings.returnCats || []); const on = !set.has(c); on ? set.add(c) : set.delete(c);
+      const ops = [{ op: 'set', c: 'meta', id: 'settings', d: { ...S.settings, returnCats: [...set] } }];
+      delete ops[0].d.id;
+      S.items.filter(i => i.category === c && !!i.returnable !== on).forEach(i => ops.push(itemUpd(i.id, { returnable: on })));
+      S.settings.returnCats = [...set]; DB.commit(ops); sh.querySelector('#rc').innerHTML = draw();
+    });
+  });
+}
+function openAudit() {
+  openSheet(`${head('修改和删除记录', '只在这里能看到。误删的可以点「找回」。')}
+    ${S.audit.length ? S.audit.map(a => { const r = a.rec || {}; return `<div class="mini"><span>${esc(a.by)} ${a.action}了：${TYPE[r.type] || ''} ${esc(r.name || '')} ${fmt(r.qty)} ${esc(r.unit || '')}${a.newQty != null ? ` → ${fmt(a.newQty)}` : ''}${a.restored ? '（已找回）' : (a.action === '删除' ? ` <button class="link" data-rs="${a.id}">找回</button>` : '')}</span><span>${fmtT(a.t)}</span></div>`; }).join('') : '<div class="empty">没有修改过</div>'}`, sh => {
+    sh.addEventListener('click', e => {
+      const b = e.target.closest('[data-rs]'); if (!b) return;
+      const a = S.audit.find(x => x.id === b.dataset.rs); if (!a) return;
+      const r = { ...a.rec }; const it = item(r.itemId);
+      if (!it) return alert('这样物品已经不在了，不能找回');
+      if (!confirm('把这条记录找回来？库存会重新算上。')) return;
+      const ops = [];
+      if (r.type === 'in' || r.type === 'new') ops.push(itemUpd(it.id, { stock: INC(r.qty) }));
+      else if (r.type === 'out') ops.push(itemUpd(it.id, { stock: INC(-r.qty) }));
+      else if (r.type === 'adjust') ops.push(itemUpd(it.id, { stock: INC(r.qty) }));
+      else if (r.type === 'lend') { ops.push(itemUpd(it.id, { stock: INC(-r.qty), lent: INC(r.qty) })); ops.push({ op: 'set', c: 'lends', id: r.lendId || uid(), d: clean({ t: r.t, ...base(it), person: r.person || '', qty: r.qty, returned: 0, open: true, by: r.by }) }); }
+      else if (r.type === 'return') {
+        const l = S.lends.find(x => x.id === r.lendId);
+        if (l) ops.push({ op: 'upd', c: 'lends', id: l.id, d: { returned: INC(r.qty), open: r3(l.qty - l.returned - r.qty) > 0 } });
+        if (r.state === '完好') ops.push(itemUpd(it.id, { stock: INC(r.qty), lent: INC(-r.qty) }));
+        else if (r.state === '损坏') ops.push(itemUpd(it.id, { broken: INC(r.qty), lent: INC(-r.qty) }));
+        else ops.push(itemUpd(it.id, { lent: INC(-r.qty) }));
+      }
+      const id = r.id; delete r.id;
+      ops.push({ op: 'set', c: 'records', id, d: r }, { op: 'upd', c: 'audit', id: a.id, d: { restored: true } });
+      DB.commit(ops); closeSheet(); toast('已找回');
+    });
+  });
+}
+
+/* ---------- 表格导入导出（SheetJS） ---------- */
+let XP = null;
+function loadXLSX() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  if (XP) return XP;
+  const urls = ['https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js', 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js'];
+  XP = new Promise((res, rej) => {
+    const tryOne = i => {
+      if (i >= urls.length) { XP = null; return rej(new Error('表格组件加载失败，检查网络')); }
+      const s = document.createElement('script'); s.src = urls[i];
+      s.onload = () => res(window.XLSX); s.onerror = () => { s.remove(); tryOne(i + 1); };
+      document.head.appendChild(s);
+    };
+    tryOne(0);
+  });
+  return XP;
+}
+async function writeX(rows, sheet, file) {
+  if (!rows.length) return toast('没有可导出的内容');
+  if (isWeChat() && !confirm('微信里一般下载不了文件。建议点右上角「···」→「在浏览器打开」后再导出。还要继续吗？')) return;
+  try {
+    const X = await loadXLSX();
+    const ws = X.utils.json_to_sheet(rows); const wb = X.utils.book_new(); X.utils.book_append_sheet(wb, ws, sheet);
+    X.writeFile(wb, `${file}_${fmtD(now())}.xlsx`);
+  } catch (e) { alert(e.message); }
+}
+const H = {
+  name: ['名称', '物品', '物品名称', '品名', '材料名称', '名字', '物资名称', '材料'],
+  spec: ['规格', '型号', '规格型号', '规格/型号'],
+  unit: ['单位', '计量单位'],
+  qty: ['数量', '库存', '库存数量', '结存', '现有数量', '在库', '现存'],
+  category: ['分类', '类别', '类型', '大类'],
+  alias: ['别名', '俗称', '其他叫法'],
+  returnable: ['需归还', '是否归还', '需要归还']
+};
+function openImport() {
+  let parsed = null, mode = 'skip';
+  openSheet(`${head('导入物品清单', '选一个 Excel / WPS 表格，表头要有"名称"，可以有规格、单位、数量、分类、别名。')}
+    <label class="btn pri filebtn" style="width:100%">选择表格文件<input type="file" id="xf" accept=".xlsx,.xls,.csv,.et"></label>
+    <div id="xp"></div>`, sh => {
+    const xp = sh.querySelector('#xp');
+    sh.querySelector('#xf').onchange = async e => {
+      const f = e.target.files[0]; if (!f) return;
+      xp.innerHTML = '<div class="note">正在读取…</div>';
+      try {
+        const X = await loadXLSX();
+        const wb = X.read(await f.arrayBuffer());
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = X.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+        let hi = -1, map = {};
+        for (let r = 0; r < Math.min(rows.length, 15) && hi < 0; r++) {
+          const m = {};
+          rows[r].forEach((c, ci) => { const t = String(c).replace(/\s/g, ''); for (const k in H) if (m[k] == null && H[k].some(w => t === w || (t.includes(w) && t.length <= w.length + 4))) m[k] = ci; });
+          if (m.name != null) { hi = r; map = m; }
+        }
+        if (hi < 0) { xp.innerHTML = '<div class="warnbox">前 15 行里没找到"名称"这一列。请检查表头。</div>'; return; }
+        const keyOf = (n, s) => (n + '|' + s).toLowerCase();
+        const exist = new Map(S.items.map(i => [keyOf(i.name, i.spec || ''), i]));
+        const out = [];
+        for (const row of rows.slice(hi + 1)) {
+          const v = k => map[k] == null ? '' : String(row[map[k]] ?? '').trim();
+          const name = v('name'); if (!name) continue;
+          const q = readNum(v('qty'));
+          const ret = v('returnable');
+          out.push({ name, spec: v('spec'), unit: v('unit'), category: v('category'), alias: v('alias'), qty: Number.isFinite(q) ? q : null, returnable: /是|需|要|y|1|√/i.test(ret) && !/否|不/.test(ret), ex: exist.get(keyOf(name, v('spec'))) });
+        }
+        parsed = out;
+        const nNew = out.filter(x => !x.ex).length, nEx = out.length - nNew;
+        const found = Object.keys(map).map(k => ({ name: '名称', spec: '规格', unit: '单位', qty: '数量', category: '分类', alias: '别名', returnable: '需归还' }[k])).join('、');
+        xp.innerHTML = `<div class="note">认出的列：${found}</div>
+          <div class="big">新物品 ${nNew} 样${nEx ? `，已有 ${nEx} 样` : ''}</div>
+          ${nEx ? `<div class="field"><label>已有的物品怎么处理</label><div class="seg" id="xm"><button class="on" data-m="skip">跳过</button><button data-m="set">用表格数量覆盖</button></div></div>` : ''}
+          <table class="pv"><tr><th>名称</th><th>规格</th><th>数量</th><th>单位</th><th></th></tr>${out.slice(0, 12).map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.spec)}</td><td>${x.qty == null ? '' : fmt(x.qty)}</td><td>${esc(x.unit)}</td><td>${x.ex ? '已有' : ''}</td></tr>`).join('')}</table>
+          ${out.length > 12 ? `<div class="note">只显示前 12 行，共 ${out.length} 行</div>` : ''}
+          <div class="btns"><button class="btn pri" id="xgo">确认导入</button></div>`;
+        const xm = xp.querySelector('#xm');
+        if (xm) xm.addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; xm.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
+        xp.querySelector('#xgo').onclick = () => {
+          const ops = []; let n = 0; const t0 = now();
+          parsed.forEach((x, i) => {
+            if (x.ex) {
+              if (mode === 'set' && x.qty != null) { const diff = r3(x.qty - (x.ex.stock || 0)); if (diff) { ops.push(itemUpd(x.ex.id, { stock: INC(diff) })); ops.push(recOp({ type: 'adjust', ...base(x.ex), qty: diff, before: x.ex.stock || 0, after: x.qty, note: '表格导入' }).op); n++; } }
+              return;
+            }
+            const id = uid(); const q = x.qty || 0;
+            const ret = x.returnable || (S.settings.returnCats || []).includes(x.category);
+            ops.push({ op: 'set', c: 'items', id, d: { name: x.name, spec: x.spec, unit: x.unit, category: x.category, alias: x.alias, returnable: ret, stock: q, lent: 0, broken: 0, t: t0 - i, lu: t0 - i, hasPhoto: false, pv: 0 } });
+            if (q) ops.push(recOp({ type: 'new', itemId: id, name: x.name, spec: x.spec, unit: x.unit, qty: q, note: '表格导入' }).op);
+            n++;
+          });
+          if (!ops.length) { closeSheet(); toast('没有需要导入的'); return; }
+          DB.commit(ops); closeSheet(); toast(`已导入 ${n} 样`);
+        };
+      } catch (err) { xp.innerHTML = `<div class="warnbox">读取失败：${esc(err.message)}</div>`; }
+    };
+  });
+}
+function expStock() {
+  writeX(S.items.slice().sort((a, b) => String(a.category).localeCompare(String(b.category), 'zh') || String(a.name).localeCompare(String(b.name), 'zh')).map(i => ({
+    名称: i.name, 规格: i.spec || '', 分类: i.category || '', 别名: i.alias || '', 单位: i.unit || '',
+    在库: r3(i.stock), 借出: r3(i.lent), 损坏: r3(i.broken), 总数: r3((i.stock || 0) + (i.lent || 0)), 需归还: i.returnable ? '是' : '否'
+  })), '库存', '库存');
+}
+function dateRange(sh) {
+  const a = sh.querySelector('#d1').value, b = sh.querySelector('#d2').value;
+  return [a ? new Date(a + 'T00:00:00').getTime() : 0, b ? new Date(b + 'T00:00:00').getTime() + 86400000 : Infinity];
+}
+const dateFields = () => `<div class="field"><label>从（不填就是全部）</label><input type="date" id="d1"></div><div class="field"><label>到</label><input type="date" id="d2"></div>`;
+function expRec() {
+  openSheet(`${head('导出出入库记录')}${dateFields()}<div class="btns"><button class="btn pri" id="go">导出</button></div>`, sh => {
+    sh.querySelector('#go').onclick = () => {
+      const [a, b] = dateRange(sh);
+      writeX(S.recs.filter(r => r.t >= a && r.t < b).map(r => ({ 时间: fmtD(r.t) + ' ' + fmtHM(r.t), 类型: TYPE[r.type] || r.type, 物品: r.name, 规格: r.spec || '', 数量: signed(r)[0], 单位: r.unit || '', 领用人: r.person || '', 状态: r.state || '', 备注: r.note || '', 登记人: r.by || '' })), '出入库记录', '出入库记录');
+    };
+  });
+}
+function expReq() {
+  let kind = 'use';
+  openSheet(`${head('导出申报')}
+    <div class="field"><label>类型</label><div class="seg" id="k"><button class="on" data-k="use">领用申报</button><button data-k="buy">采购申报</button></div></div>
+    ${dateFields()}
+    <div class="field"><label>申报人（不填就是全部）</label><input id="pp" list="peopleList"></div>
+    <div class="field"><label>状态</label><select id="ss"><option value="">全部</option></select></div>
+    <div class="btns"><button class="btn pri" id="go">导出</button></div>`, sh => {
+    const fill = () => { const m = kind === 'buy' ? BUY_ST : USE_ST; sh.querySelector('#ss').innerHTML = '<option value="">全部</option>' + Object.entries(m).map(([k, v]) => `<option value="${k}">${v[0]}</option>`).join(''); };
+    fill();
+    sh.querySelector('#k').addEventListener('click', e => { const b = e.target.closest('[data-k]'); if (!b) return; kind = b.dataset.k; sh.querySelectorAll('#k button').forEach(x => x.classList.toggle('on', x === b)); fill(); });
+    sh.querySelector('#go').onclick = () => {
+      const [a, b] = dateRange(sh); const p = sh.querySelector('#pp').value.trim(); const st = sh.querySelector('#ss').value;
+      const m = kind === 'buy' ? BUY_ST : USE_ST; const rows = [];
+      S.reqs.filter(r => r.kind === kind && r.t >= a && r.t < b && (!p || r.requester === p) && (!st || r.status === st)).forEach(r => r.lines.forEach((l, i) => rows.push({
+        时间: fmtD(r.t) + ' ' + fmtHM(r.t), 申报人: r.requester, 物品: l.name, 规格: l.spec || '', 申请数量: r3(l.qty), 单位: l.unit || '',
+        ...(kind === 'use' ? { 发放数量: r.given ? r3(r.given[i]) : '' } : { 清单外: l.itemId ? '' : '是' }),
+        状态: (m[r.status] || [r.status])[0], 处理人: r.handledBy || '', 备注: r.note || '', 拒绝原因: r.reason || ''
+      })));
+      writeX(rows, kind === 'buy' ? '采购申报' : '领用申报', kind === 'buy' ? '采购申报' : '领用申报');
+    };
+  });
+}
+function expLend() {
+  writeX(S.lends.filter(l => l.open).sort((a, b) => String(a.person).localeCompare(String(b.person), 'zh') || a.t - b.t).map(l => ({
+    借用人: l.person || '', 物品: l.name, 规格: l.spec || '', 借出数量: r3(l.qty), 已还: r3(l.returned), 未还: r3(l.qty - l.returned), 单位: l.unit || '', 借出日期: fmtD(l.t), 借出天数: daysSince(l.t)
+  })), '借出清单', '借出清单');
+}
+
+/* ---------- 示例数据（只在本地演示用） ---------- */
+function seed() {
+  const demo = [['扎丝', '22号', '卷', '材料', 18, false, '绑丝,铁丝'], ['PVC管', 'DN50', '根', '管材', 40], ['PVC管', 'DN110', '根', '管材', 12], ['螺丝', 'M8×30', '个', '五金', 350], ['水泥钉', '', '公斤', '五金', 6.5],
+    ['扳手', '24mm', '把', '工具', 6, true, '活扳手'], ['电钻', '', '台', '工具', 3, true], ['梯子', '3米', '把', '工具', 2, true], ['安全帽', '', '个', '劳保', 25], ['手套', '', '双', '劳保', 80], ['钢丝绳', 'Φ12', '米', '材料', 150], ['电焊条', 'J422 3.2', '包', '材料', 9]];
+  const t = now(); const ops = [];
+  demo.forEach((d, i) => ops.push({ op: 'set', c: 'items', id: uid() + i, d: { name: d[0], spec: d[1], unit: d[2], category: d[3], stock: d[4], returnable: !!d[5], alias: d[6] || '', lent: 0, broken: 0, t: t - i * 1000, lu: t - i * 1000, hasPhoto: false, pv: 0 } }));
+  ops.push({ op: 'set', c: 'meta', id: 'settings', d: { returnCats: ['工具'] } });
+  DB.commit(ops); toast('已载入示例数据'); S.view = 'stock'; render();
+}
+
+/* ---------- 按钮动作 ---------- */
+const ACT = {
+  newItem: () => openItemForm(null),
+  newItemQ: () => openItemForm(null, { name: S.q.trim() }),
+  openCart, newBuy: openNewBuy,
+  approveUse(id, b) {
+    const r = S.reqs.find(x => x.id === id); if (!r) return;
+    const card = b.closest('.card');
+    const given = r.lines.map((l, i) => { const v = readNum(card.querySelector(`[data-li="${i}"]`).value); return v > 0 ? v : 0; });
+    if (given.some((g, i) => g > r.lines[i].qty)) return alert('发放数量不能超过申请数量');
+    const ops = []; let any = false, full = true;
+    r.lines.forEach((l, i) => { const q = given[i]; if (q < l.qty) full = false; if (q > 0) { const it = item(l.itemId); if (it) { any = true; ops.push(...opsOut(it, q, r.requester, '领用申报', r.id).ops); } } });
+    if (!any && !confirm('发放数量都是 0，等于拒绝这条申报，继续吗？')) return;
+    ops.push({ op: 'upd', c: 'requests', id: r.id, d: { status: !any ? 'rejected' : full ? 'done' : 'partial', given, handledBy: me.name, ht: now() } });
+    DB.commit(ops); toast(!any ? '已拒绝' : full ? '已发放' : '已部分发放');
+  },
+  rejectUse(id) {
+    const reason = prompt('拒绝原因（可不填）'); if (reason === null) return;
+    DB.commit([{ op: 'upd', c: 'requests', id, d: { status: 'rejected', reason: reason.trim(), handledBy: me.name, ht: now() } }]); toast('已拒绝');
+  },
+  buyOrdered: id => { DB.commit([{ op: 'upd', c: 'requests', id, d: { status: 'ordered', handledBy: me.name, ot: now() } }]); toast('已标记：已下单'); },
+  buyArrived: id => { DB.commit([{ op: 'upd', c: 'requests', id, d: { status: 'arrived', handledBy: me.name, at: now() } }]); toast('已标记：已到货，库管员可以入库了'); },
+  buyReject: id => { const reason = prompt('拒绝原因（可不填）'); if (reason === null) return; DB.commit([{ op: 'upd', c: 'requests', id, d: { status: 'rejected', reason: reason.trim(), handledBy: me.name, ht: now() } }]); toast('已拒绝'); },
+  stockBuy(id) {
+    const r = S.reqs.find(x => x.id === id); if (!r) return;
+    if (!confirm(`把这张采购申报的 ${r.lines.length} 样东西全部入库？`)) return;
+    const ops = []; const t = now();
+    r.lines.forEach((l, i) => {
+      let it = l.itemId && item(l.itemId);
+      if (it) { ops.push(...opsIn(it, l.qty, '采购入库').ops); return; }
+      const nid = uid() + i;
+      ops.push({ op: 'set', c: 'items', id: nid, d: { name: l.name, spec: l.spec || '', unit: l.unit || '', category: '', alias: '', returnable: false, stock: l.qty, lent: 0, broken: 0, t, lu: t, hasPhoto: !!l.photo, pv: l.photo ? t : 0 } });
+      if (l.photo) ops.push({ op: 'set', c: 'photos', id: nid, d: { img: l.photo, t } });
+      ops.push(recOp({ type: 'new', itemId: nid, name: l.name, spec: l.spec || '', unit: l.unit || '', qty: l.qty, note: '采购入库（新物品）' }).op);
+    });
+    ops.push({ op: 'upd', c: 'requests', id, d: { status: 'stocked', stockedBy: me.name, st: t } });
+    DB.commit(ops); toast('已全部入库');
+  },
+  lendSort: id => { S.lendSort = id; render(); },
+  ret: id => { const l = S.lends.find(x => x.id === id); if (l) openReturn(l); },
+  rec: id => { if (!isKeeper()) return; const r = S.recs.find(x => x.id === id); if (r) openRecord(r); },
+  burst: openBurst, retCats: openRetCats, audit: openAudit, import: openImport,
+  expStock, expRec, expReq, expLend,
+  seed: () => { if (confirm('载入 12 样示例物品？')) seed(); },
+  wipe: () => { if (confirm('清空这部手机上的全部演示数据？')) { DB.reset(); toast('已清空'); } }
+};
+$('#main').addEventListener('click', e => {
+  const b = e.target.closest('[data-act],[data-item]'); if (!b) return;
+  if (b.dataset.item) return openItem(b.dataset.item);
+  const f = ACT[b.dataset.act]; if (f) f(b.dataset.id, b);
+});
+
+boot();
+</script>
+</body>
+</html>
