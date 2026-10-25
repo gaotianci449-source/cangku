@@ -428,7 +428,7 @@ function tabsFor(r) {
 const TABN = { stock: '库存', req: '申报', lend: '借出', rec: '记录', more: '更多' };
 function badgeFor(t) {
   if (t !== 'req' || !me) return 0;
-  if (me.role === 'keeper') return S.reqs.filter(r => (r.kind === 'use' && r.status === 'pending') || needStock(r)).length;
+  if (me.role === 'keeper') return S.reqs.filter(r => r.kind === 'use' && r.status === 'pending').length;
   if (me.role === 'buyer') return S.reqs.filter(r => r.kind === 'buy' && ['pending', 'ordered', 'partial'].includes(r.status)).length;
   return 0;
 }
@@ -729,25 +729,33 @@ function openMerge(src) {
 
 /* ---------- 申报 ---------- */
 const USE_ST = { pending: ['待处理', 'y'], done: ['已发放', 'g'], partial: ['部分发放', 'b'], rejected: ['已拒绝', 'r'] };
-const BUY_ST = { pending: ['待采购', 'y'], ordered: ['已下单', 'b'], partial: ['部分到货', 'b'], arrived: ['已到货', 'g'], stocked: ['已入库', ''], rejected: ['已拒绝', 'r'] };
+const BUY_ST = { pending: ['待采购', 'y'], ordered: ['已下单', 'b'], partial: ['部分到货', 'b'], stocked: ['已入库', 'g'], rejected: ['已拒绝', 'r'] };
 /* 采购申报的每一行：name/spec/unit/qty/itemId 是库管员原来申购的；
    b = 采购调整后的内容（只存改过的字段）；drop = 采购决定不买；added = 采购新增的行；
-   arr = 累计到货；arrSt = 已入库处理过的到货；inq = 库管员实际点数入库的累计 */
+   k = 库管员收货时改的名称/规格/单位；byKeeper = 库管员收货时新增的行；
+   arr/inq = 累计收货入库数量（由库管员点数）；short = 没收齐就结束了 */
 const jclone = o => JSON.parse(JSON.stringify(o));
 const planOf = l => ({ itemId: l.itemId || null, name: l.name, spec: l.spec || '', unit: l.unit || '', qty: l.qty, ...(l.b || {}) });
 const planQty = l => l.drop ? 0 : planOf(l).qty;
 const toStockQty = l => r3((l.arr || 0) - (l.arrSt || 0));
 const needStock = r => r.kind === 'buy' && r.status !== 'rejected' && (r.lines || []).some(l => toStockQty(l) > 0);
+const recvOf = l => ({ ...planOf(l), ...(l.k || {}) });
+const canReceive = r => r.kind === 'buy' && ['pending', 'ordered', 'partial', 'arrived'].includes(r.status);
 function changeTags(l) {
   const t = [];
-  if (l.added) t.push('新增');
+  if (l.byKeeper) t.push('收货新增'); else if (l.added) t.push('新增');
   if (l.drop) t.push('不买');
   if (l.b) {
     if (l.b.qty != null && l.b.qty !== l.qty) t.push('改了数量');
     if ((l.b.name != null && l.b.name !== l.name) || (l.b.spec != null && l.b.spec !== (l.spec || ''))) t.push('改了规格');
     if (l.b.unit != null && l.b.unit !== (l.unit || '')) t.push('改了单位');
   }
-  if (l.short) t.push('没买齐');
+  if (l.k) {
+    const p = planOf(l);
+    if ((l.k.name != null && l.k.name !== p.name) || (l.k.spec != null && l.k.spec !== p.spec)) t.push('收货改了规格');
+    if (l.k.unit != null && l.k.unit !== p.unit) t.push('收货改了单位');
+  }
+  if (l.short) t.push('没收齐');
   return t;
 }
 const stTag = (r) => { const m = (r.kind === 'buy' ? BUY_ST : USE_ST)[r.status] || [r.status, '']; return `<span class="tag ${m[1]}">${m[0]}</span>`; };
@@ -765,23 +773,23 @@ function useCard(r, act) {
     ${act ? `<div class="btns"><button class="btn warn sm" data-act="rejectUse" data-id="${r.id}">拒绝</button><button class="btn pri sm" data-act="approveUse" data-id="${r.id}">按填写数量发放</button></div>` : ''}</div>`;
 }
 function buyLine(l) {
-  const p = planOf(l); const tags = changeTags(l);
-  const renamed = !l.added && ((p.name !== l.name) || (p.spec !== (l.spec || '')));
+  const p = planOf(l), v = recvOf(l); const tags = changeTags(l);
+  const renamed = !l.added && ((v.name !== l.name) || (v.spec !== (l.spec || '')));
   const nums = [];
-  nums.push(l.added ? '采购新增' : `申购 ${fmt(l.qty)}`);
+  if (l.byKeeper) nums.push('库管员收货时新增');
+  else nums.push(l.added ? '采购新增' : `申购 ${fmt(l.qty)}`);
   if (!l.added && !l.drop && p.qty !== l.qty) nums.push(`调整为 ${fmt(p.qty)}`);
-  if (l.arr) nums.push(`到货 ${fmt(l.arr)}`);
-  if (l.inq != null && l.arrSt) nums.push(`入库 ${fmt(l.inq)}`);
-  const tagH = tags.map(t => `<span class="tag ${t === '不买' || t === '没买齐' ? 'r' : t === '新增' ? 'b' : 'y'}">${t}</span>`).join(' ');
+  if (l.inq) nums.push(`收货入库 ${fmt(l.inq)}`);
+  const tagH = tags.map(t => `<span class="tag ${t === '不买' || t === '没收齐' ? 'r' : /新增/.test(t) ? 'b' : 'y'}">${t}</span>`).join(' ');
   return `<div class="line">${l.photo ? `<div class="thumb"><img src="${l.photo}" alt=""></div>` : ''}<div class="mid">
-    ${esc(p.name)} ${esc(p.spec)}${p.itemId || l.stItemId ? '' : ' <span class="tag">清单外</span>'} ${tagH}
+    ${esc(v.name)} ${esc(v.spec)}${v.itemId || l.stItemId || matchItemId(v.name, v.spec) ? '' : ' <span class="tag">清单外</span>'} ${tagH}
     ${renamed ? `<div class="was">原：${esc(l.name)} ${esc(l.spec || '')}</div>` : ''}
-    <small>${nums.join('，')} ${esc(p.unit)}</small></div></div>`;
+    <small>${nums.join('，')} ${esc(v.unit)}</small></div></div>`;
 }
 function buyCard(r, actions) {
-  return `<div class="card"><div class="t1"><span class="who">采购申报</span><span>${needStock(r) ? '<span class="tag g">待入库</span> ' : ''}${stTag(r)}</span></div>
+  return `<div class="card"><div class="t1"><span class="who">采购申报</span><span>${stTag(r)}</span></div>
     <div class="when">${esc(r.requester)}　${fmtT(r.t)}${r.handledBy ? `，采购 ${esc(r.handledBy)}` : ''}</div>${r.lines.map(buyLine).join('')}
-    ${r.note ? `<div class="note">备注：${esc(r.note)}</div>` : ''}${(r.arrNotes || []).map(n => `<div class="note">到货备注（${fmtT(n.t)}）：${esc(n.text)}</div>`).join('')}
+    ${r.note ? `<div class="note">备注：${esc(r.note)}</div>` : ''}${(r.arrNotes || []).map(n => `<div class="note">收货备注（${fmtT(n.t)}${n.by ? '，' + esc(n.by) : ''}）：${esc(n.text)}</div>`).join('')}
     ${r.reason ? `<div class="note">拒绝原因：${esc(r.reason)}</div>` : ''}
     ${actions ? `<div class="btns">${actions}</div>` : ''}</div>`;
 }
@@ -794,13 +802,13 @@ function viewReq() {
     return `<div class="h"><h2>待处理领用（${pend.length}）</h2></div>
       ${pend.length ? pend.map(r => useCard(r, true)).join('') : '<div class="card empty" style="padding:20px">没有待处理的领用申报</div>'}
       <div class="h"><h2>采购申报</h2><button class="btn sm pri" data-act="newBuy">＋ 新建</button></div>
-      ${buys.length ? buys.map(r => buyCard(r, needStock(r) ? `<button class="btn in sm" data-act="stockBuy" data-id="${r.id}">入库</button>` : '')).join('') : '<div class="card empty" style="padding:20px">还没有采购申报</div>'}
+      ${buys.length ? buys.map(r => buyCard(r, canReceive(r) ? `<button class="btn in sm" data-act="stockBuy" data-id="${r.id}">收货入库</button>` : '')).join('') : '<div class="card empty" style="padding:20px">还没有采购申报</div>'}
       ${done.length ? `<div class="h"><h2>已处理的领用</h2></div>${done.map(r => useCard(r, false)).join('')}` : ''}`;
   }
   if (role === 'buyer') {
     const buys = S.reqs.filter(r => r.kind === 'buy');
     const act = r => r.status === 'pending' ? `<button class="btn warn sm" data-act="buyReject" data-id="${r.id}">拒绝</button><button class="btn line2 sm" data-act="buyEdit" data-id="${r.id}">改清单</button><button class="btn pri sm" data-act="buyOrdered" data-id="${r.id}">已下单</button>`
-      : (r.status === 'ordered' || r.status === 'partial') ? `<button class="btn line2 sm" data-act="buyEdit" data-id="${r.id}">改清单</button><button class="btn in sm" data-act="buyArrived" data-id="${r.id}">登记到货</button>` : '';
+      : (r.status === 'ordered' || r.status === 'partial') ? `<button class="btn line2 sm" data-act="buyEdit" data-id="${r.id}">改清单</button>` : '';
     return `<div class="h"><h2>采购申报</h2></div>${buys.length ? buys.map(r => buyCard(r, act(r))).join('') : '<div class="empty">库管员还没有提交采购申报</div>'}`;
   }
   // 领用人
@@ -956,72 +964,88 @@ function matchItemId(name, spec) {
   const it = S.items.find(i => i.name === name && (i.spec || '') === (spec || ''));
   return it ? it.id : null;
 }
-function openArrive(r) {
+// 库管员收货入库：按实际收到的填数量，可改名称/规格/单位，可加清单外跟着到的东西
+function openReceive(r) {
   const lines = jclone(r.lines);
-  const act = lines.map((l, i) => ({ l, i, left: r3(planQty(l) - (l.arr || 0)) })).filter(x => !x.l.drop && x.left > 0);
-  if (!act.length) return alert('清单里的东西都已经到齐了');
-  let mode = 'continue';
-  const sh = openSheet(`${head('登记到货', '填这次实际买到的数量，没买到填 0。')}
-    ${act.map(x => { const p = planOf(x.l); return `<div class="line"><div class="mid">${esc(p.name)} ${esc(p.spec)}<small>还差 ${fmt(x.left)} ${esc(p.unit)}${x.l.arr ? `（已到 ${fmt(x.l.arr)}）` : ''}</small></div><input data-ai="${x.i}" inputmode="decimal" value="${fmt(x.left)}" aria-label="到货数量"></div>`; }).join('')}
-    <div class="field"><label>备注（可不填）</label><input id="an2" placeholder="比如：市场上只剩这么多"></div>
-    <div class="field" id="modeBox" hidden><label>没买齐的部分</label><div class="seg" id="md"><button class="on" data-m="continue">还会继续买</button><button data-m="stop">不买了</button></div></div>
-    <div class="btns"><button class="btn in" id="ok">确认到货</button></div>`, () => {});
-  const read = () => act.map(x => { const v = readNum(sh.querySelector(`[data-ai="${x.i}"]`).value); return Number.isFinite(v) && v > 0 ? v : 0; });
-  const upd = () => { const q = read(); sh.querySelector('#modeBox').hidden = !act.some((x, k) => q[k] < x.left); };
+  const rows = lines.map((l, i) => ({ l, i, left: r3(planQty(l) - (l.inq || 0)) })).filter(x => !x.l.drop && x.left > 0);
+  const extra = [];
+  let mode = 'more';
+  const sh = openSheet(`${head('收货入库', '按实际收到的填，没收到填 0。到的东西和清单不一样可以点"改规格"。')}
+    <div id="rl"></div>
+    <div class="sec"><h3>清单上没有、但一起到了的</h3><div id="xl"></div>
+      <div class="field"><input id="xn" placeholder="搜库存里的物品，或直接写名称" autocomplete="off"><div id="xs"></div></div>
+      <div style="display:flex;gap:8px;margin-top:8px"><input id="xsp" placeholder="规格" style="flex:1;min-width:0;height:44px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px"><input id="xu" placeholder="单位" style="width:80px;height:44px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px"><input id="xq" inputmode="decimal" placeholder="数量" style="width:80px;height:44px;border:1.5px solid var(--line);border-radius:8px;padding:0 10px;text-align:center"></div>
+      <div class="btns"><button class="btn line2 sm" id="xadd">加上</button></div></div>
+    <div class="field"><label>备注（可不填）</label><input id="rn" placeholder="比如：有 2 根破损没收"></div>
+    <div class="field" id="modeBox" hidden><label>没收齐的部分</label><div class="seg" id="md"><button class="on" data-m="more">还有没到的</button><button data-m="end">就这些了</button></div></div>
+    <div class="btns"><button class="btn in" id="ok">确认收货入库</button></div>`, () => {});
+  const g = q => sh.querySelector(q);
+  g('#rl').innerHTML = rows.length ? rows.map(x => { const v = recvOf(x.l); const p = planOf(x.l);
+    return `<div class="eline" data-i="${x.i}">
+      <div class="t1"><b>${esc(v.name)} ${esc(v.spec)}</b><button class="link" data-sp="${x.i}">改规格</button></div>
+      <div class="sub">${x.l.added ? '采购新增' : `申购 ${fmt(x.l.qty)}`}${!x.l.added && p.qty !== x.l.qty ? `，采购调整 ${fmt(p.qty)}` : ''}${x.l.inq ? `，已收 ${fmt(x.l.inq)}` : ''}，还差 ${fmt(x.left)} ${esc(v.unit)}</div>
+      <div class="row2"><span class="sub">收到</span><input data-q="${x.i}" inputmode="decimal" value="${fmt(x.left)}"><span>${esc(v.unit)}</span></div>
+      <div class="specbox" data-box="${x.i}" hidden><input data-f="name" placeholder="名称" value="${esc(v.name)}"><input data-f="spec" placeholder="规格" value="${esc(v.spec)}"><input data-f="unit" placeholder="单位" value="${esc(v.unit)}" style="max-width:72px"></div>
+    </div>`; }).join('') : '<div class="note">清单上的东西都已经收齐了。</div>';
+  g('#rl').addEventListener('click', e => { const t = e.target; if (t.dataset.sp != null) { const box = sh.querySelector(`[data-box="${t.dataset.sp}"]`); box.hidden = !box.hidden; } });
+  const qOf = x => { const v = readNum(sh.querySelector(`[data-q="${x.i}"]`).value); return Number.isFinite(v) && v > 0 ? v : 0; };
+  const upd = () => { g('#modeBox').hidden = !rows.some(x => qOf(x) < x.left); };
   sh.addEventListener('input', upd); upd();
-  sh.querySelector('#md').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; sh.querySelectorAll('#md button').forEach(x => x.classList.toggle('on', x === b)); });
-  sh.querySelector('#ok').onclick = () => {
-    const q = read();
-    if (act.some((x, k) => q[k] > x.left) && !confirm('有的数量比计划买的还多，确定吗？（会按实际到货算）')) return;
-    act.forEach((x, k) => { if (q[k] > 0) x.l.arr = r3((x.l.arr || 0) + q[k]); });
-    const short = act.some((x, k) => q[k] < x.left);
-    if (!q.some(v => v > 0) && !(short && mode === 'stop')) return alert('这次到货数量都是 0。没买到的话可以选"不买了"。');
-    let status = !short ? 'arrived' : mode === 'continue' ? 'partial' : 'arrived';
-    if (short && mode === 'stop') act.forEach((x, k) => { if (q[k] < x.left) x.l.short = true; });
-    const tmp = { ...r, lines };
-    if (status === 'arrived' && !needStock(tmp)) status = lines.some(l => l.arrSt) ? 'stocked' : 'rejected';
-    const note = sh.querySelector('#an2').value.trim();
-    const d = { lines, status, handledBy: me.name, at: now() };
-    if (note) d.arrNotes = [...(r.arrNotes || []), { t: now(), text: note }];
-    if (status === 'rejected') d.reason = '没有买到';
-    DB.commit([{ op: 'upd', c: 'requests', id: r.id, d: jclone(d) }]);
-    closeSheet(); toast(status === 'partial' ? '已登记部分到货，库管员可以先入库' : status === 'rejected' ? '已结束：没有买到' : '已登记到货，库管员可以入库了');
+  g('#md').addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; sh.querySelectorAll('#md button').forEach(x => x.classList.toggle('on', x === b)); });
+  let pick = null;
+  const drawX = () => { g('#xl').innerHTML = extra.map((x, i) => `<div class="mini"><span>${esc(x.name)} ${esc(x.spec)} ${fmt(x.qty)} ${esc(x.unit)}</span><button class="link" data-xr="${i}">移除</button></div>`).join(''); };
+  g('#xl').addEventListener('click', e => { const b = e.target.closest('[data-xr]'); if (!b) return; extra.splice(+b.dataset.xr, 1); drawX(); });
+  const drawSug = () => { const q = g('#xn').value.trim(); if (!q || pick) { g('#xs').innerHTML = ''; return; }
+    const l = S.items.filter(i => matchQ(i, q)).slice(0, 6);
+    g('#xs').innerHTML = l.length ? `<div class="sugg">${l.map(i => `<button data-id="${i.id}">${esc(i.name)} ${esc(i.spec || '')}　<span class="sub">在库 ${fmt(i.stock)} ${esc(i.unit || '')}</span></button>`).join('')}</div>` : ''; };
+  g('#xn').addEventListener('input', () => { pick = null; drawSug(); });
+  g('#xs').addEventListener('click', e => { const b = e.target.closest('[data-id]'); if (!b) return; pick = item(b.dataset.id); g('#xn').value = pick.name; g('#xsp').value = pick.spec || ''; g('#xu').value = pick.unit || ''; drawSug(); });
+  g('#xadd').onclick = () => {
+    const name = g('#xn').value.trim(); const q = readNum(g('#xq').value);
+    if (!name) return alert('请填写名称'); if (!(q > 0)) return alert('请填写数量');
+    extra.push({ name, spec: g('#xsp').value.trim(), unit: g('#xu').value.trim(), qty: q });
+    pick = null; ['#xn', '#xsp', '#xu', '#xq'].forEach(k => g(k).value = ''); drawSug(); drawX();
   };
-}
-function openStockBuy(r) {
-  const lines = jclone(r.lines);
-  const act = lines.map((l, i) => ({ l, i, z: toStockQty(l) })).filter(x => x.z > 0);
-  if (!act.length) return;
-  const sh = openSheet(`${head('采购入库', '按实际点到的数量入库，默认是采购填的到货数。')}
-    ${act.map(x => { const p = planOf(x.l); const dif = !x.l.added && p.qty !== x.l.qty;
-      return `<div class="line"><div class="mid">${esc(p.name)} ${esc(p.spec)}<small>${x.l.added ? '采购新增' : `申购 ${fmt(x.l.qty)}`}${dif ? `，采购调整 ${fmt(p.qty)}` : ''}，这次到货 ${fmt(x.z)} ${esc(p.unit)}</small></div><input data-si="${x.i}" inputmode="decimal" value="${fmt(x.z)}" aria-label="入库数量"></div>`; }).join('')}
-    <div class="btns"><button class="btn in" id="ok">确认入库</button></div>`, () => {});
-  sh.querySelector('#ok').onclick = () => {
-    const ops = []; const t = now();
-    for (const x of act) {
-      const c = readNum(sh.querySelector(`[data-si="${x.i}"]`).value);
-      if (!(c >= 0)) return alert('请填写入库数量，没收到填 0');
-      x.c = c;
-    }
-    act.forEach((x, k) => {
-      const l = x.l, p = planOf(l), c = x.c;
-      let it = (l.stItemId && item(l.stItemId)) || (p.itemId && item(p.itemId));
-      if (it && (it.name !== p.name || (it.spec || '') !== p.spec)) it = null;
-      if (!it) { const id = matchItemId(p.name, p.spec); it = id && item(id); }
-      if (it) { if (c > 0) ops.push(...opsIn(it, c, x.z !== c ? `采购入库（采购报到货 ${fmt(x.z)}）` : '采购入库').ops); l.stItemId = it.id; }
-      else {
-        const nid = uid() + k;
-        ops.push({ op: 'set', c: 'items', id: nid, d: { name: p.name, spec: p.spec, unit: p.unit, category: '', alias: '', returnable: false, stock: c, lent: 0, broken: 0, t, lu: t, hasPhoto: !!l.photo, pv: l.photo ? t : 0 } });
-        if (l.photo) ops.push({ op: 'set', c: 'photos', id: nid, d: { img: l.photo, t } });
-        if (c > 0) ops.push(recOp({ type: 'new', itemId: nid, name: p.name, spec: p.spec, unit: p.unit, qty: c, note: '采购入库（新物品）' }).op);
-        l.stItemId = nid;
-      }
-      l.arrSt = l.arr; l.inq = r3((l.inq || 0) + c);
+  g('#ok').onclick = () => {
+    const ops = []; const t = now(); let total = 0;
+    const got = rows.map(x => qOf(x));
+    const short = rows.some((x, k) => got[k] < x.left);
+    if (!got.some(v => v > 0) && !extra.length && !(short && mode === 'end')) return alert('收到的数量都是 0。如果不会再到了，选"就这些了"。');
+    const stockIn = (l, v, c, k) => {
+      let it = (l.stItemId && item(l.stItemId)) || (v.itemId && item(v.itemId));
+      if (it && (it.name !== v.name || (it.spec || '') !== v.spec)) it = null;
+      if (!it) { const id = matchItemId(v.name, v.spec); it = id && item(id); }
+      if (it) { if (c > 0) ops.push(...opsIn(it, c, '采购收货').ops); l.stItemId = it.id; return; }
+      if (!(c > 0)) return;
+      const nid = uid() + k;
+      ops.push({ op: 'set', c: 'items', id: nid, d: { name: v.name, spec: v.spec, unit: v.unit, category: '', alias: '', returnable: false, stock: c, lent: 0, broken: 0, t, lu: t, hasPhoto: !!l.photo, pv: l.photo ? t : 0 } });
+      if (l.photo) ops.push({ op: 'set', c: 'photos', id: nid, d: { img: l.photo, t } });
+      ops.push(recOp({ type: 'new', itemId: nid, name: v.name, spec: v.spec, unit: v.unit, qty: c, note: '采购收货（新物品）' }).op);
+      l.stItemId = nid;
+    };
+    rows.forEach((x, k) => {
+      const l = x.l, c = got[k];
+      const box = sh.querySelector(`[data-box="${x.i}"]`); const f = n => box.querySelector(`[data-f=${n}]`).value.trim();
+      const p = planOf(l); const nv = { name: f('name') || p.name, spec: f('spec'), unit: f('unit') };
+      const kk = {}; if (nv.name !== p.name) kk.name = nv.name; if (nv.spec !== p.spec) kk.spec = nv.spec; if (nv.unit !== p.unit) kk.unit = nv.unit;
+      if (Object.keys(kk).length) l.k = kk;
+      if (c > 0 || l.k) stockIn(l, recvOf(l), c, k);
+      if (c > 0) { l.inq = r3((l.inq || 0) + c); l.arr = l.inq; l.arrSt = l.inq; total += c; }
+      if (short && mode === 'end' && c < x.left) l.short = true;
     });
-    const d = { lines, stockedBy: me.name, st: t };
-    if (r.status === 'arrived') d.status = 'stocked';
+    extra.forEach((x, k) => {
+      const l = { added: true, byKeeper: true, itemId: matchItemId(x.name, x.spec), name: x.name, spec: x.spec, unit: x.unit, qty: x.qty, inq: x.qty, arr: x.qty, arrSt: x.qty };
+      stockIn(l, recvOf(l), x.qty, 100 + k); lines.push(l); total += x.qty;
+    });
+    const anyIn = lines.some(l => l.inq > 0);
+    const status = (short && mode === 'more') ? 'partial' : anyIn ? 'stocked' : 'rejected';
+    const d = { lines, status, stockedBy: me.name, st: t };
+    const note = g('#rn').value.trim();
+    if (note) d.arrNotes = [...(r.arrNotes || []), { t, by: me.name, text: note }];
+    if (status === 'rejected') d.reason = '没有收到货';
     ops.push({ op: 'upd', c: 'requests', id: r.id, d: jclone(d) });
-    DB.commit(ops); closeSheet(); toast('已入库');
+    DB.commit(ops); closeSheet();
+    toast(status === 'partial' ? '已入库，剩下的等下一批' : status === 'rejected' ? '已结束：没有收到货' : '已收货入库');
   };
 }
 
@@ -1324,9 +1348,9 @@ function expReq() {
         else { const pl = planOf(l); rows.push({
           时间: fmtD(r.t) + ' ' + fmtHM(r.t), 申报人: r.requester,
           原申购物品: l.added ? '' : l.name, 原规格: l.added ? '' : (l.spec || ''), 原申购数量: l.added ? '' : r3(l.qty),
-          采购后物品: l.drop ? '' : pl.name, 采购后规格: l.drop ? '' : pl.spec, 采购后数量: r3(planQty(l)),
-          改动: changeTags(l).join('、'), 到货数量: r3(l.arr || 0), 入库数量: r3(l.inq || 0), 单位: pl.unit, ...common,
-          到货备注: (r.arrNotes || []).map(n => n.text).join('；') }); }
+          采购后物品: l.drop || l.byKeeper ? '' : pl.name, 采购后规格: l.drop || l.byKeeper ? '' : pl.spec, 采购后数量: l.byKeeper ? '' : r3(planQty(l)),
+          实际收到物品: l.inq ? recvOf(l).name : '', 实际收到规格: l.inq ? recvOf(l).spec : '', 收货入库数量: r3(l.inq || 0), 单位: recvOf(l).unit,
+          改动: changeTags(l).join('、'), ...common, 收货备注: (r.arrNotes || []).map(n => n.text).join('；') }); }
       }));
       writeX(rows, kind === 'buy' ? '采购申报' : '领用申报', kind === 'buy' ? '采购申报' : '领用申报');
     };
@@ -1369,10 +1393,9 @@ const ACT = {
     DB.commit([{ op: 'upd', c: 'requests', id, d: { status: 'rejected', reason: reason.trim(), handledBy: me.name, ht: now() } }]); toast('已拒绝');
   },
   buyOrdered: id => { DB.commit([{ op: 'upd', c: 'requests', id, d: { status: 'ordered', handledBy: me.name, ot: now() } }]); toast('已标记：已下单'); },
-  buyArrived: id => { const r = S.reqs.find(x => x.id === id); if (r) openArrive(r); },
   buyEdit: id => { const r = S.reqs.find(x => x.id === id); if (r) openBuyEdit(r); },
   buyReject: id => { const reason = prompt('拒绝原因（可不填）'); if (reason === null) return; DB.commit([{ op: 'upd', c: 'requests', id, d: { status: 'rejected', reason: reason.trim(), handledBy: me.name, ht: now() } }]); toast('已拒绝'); },
-  stockBuy: id => { const r = S.reqs.find(x => x.id === id); if (r) openStockBuy(r); },
+  stockBuy: id => { const r = S.reqs.find(x => x.id === id); if (r) openReceive(r); },
   lendSort: id => { S.lendSort = id; render(); },
   ret: id => { const l = S.lends.find(x => x.id === id); if (l) openReturn(l); },
   rec: id => { if (!isKeeper()) return; const r = S.recs.find(x => x.id === id); if (r) openRecord(r); },
