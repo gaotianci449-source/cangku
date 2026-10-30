@@ -89,6 +89,18 @@ nav.tabs button.on::before{content:"";position:absolute;top:0;left:28%;right:28%
 
 .fab{position:fixed;right:16px;bottom:calc(72px + env(safe-area-inset-bottom));z-index:25;height:52px;padding:0 20px;border-radius:26px;background:var(--blue);color:#fff;font-weight:700;font-size:16px;box-shadow:0 4px 14px rgba(29,78,137,.35)}
 .cartbar{position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:25;background:var(--ink);color:#fff;border-radius:12px;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 8px 0 16px;font-size:15px}
+.searchbar{display:flex;gap:8px}
+.searchbar input{flex:1;min-width:0}
+.selbtn{flex:none;height:48px;padding:0 14px;border-radius:var(--r);background:#fff;border:1.5px solid var(--line);font-size:15px;font-weight:600}
+.selbtn.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.ck{width:24px;height:24px;border-radius:6px;border:2px solid var(--line);flex:none;display:grid;place-items:center;font-size:15px;font-weight:700;color:#fff;background:#fff}
+.row.picked{background:#EAF1FA}
+.row.picked .ck{background:var(--blue);border-color:var(--blue)}
+.row{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.selbar{position:fixed;left:12px;right:12px;bottom:calc(68px + env(safe-area-inset-bottom));z-index:25;background:var(--ink);color:#fff;border-radius:12px;min-height:56px;display:flex;align-items:center;gap:6px;padding:6px 8px 6px 14px;font-size:15px}
+.selbar span{flex:1}
+.selbar .btn{height:42px;font-size:15px;padding:0 12px;background:rgba(255,255,255,.14);color:#fff}
+.selbar .btn.del{background:var(--red)}
 .cartbar .btn{height:40px;background:var(--yel);color:var(--ink);font-size:15px}
 
 .mask{position:fixed;inset:0;background:rgba(10,20,25,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center}
@@ -437,7 +449,7 @@ function renderTabs() {
   if (!tabs.includes(S.view)) S.view = 'stock';
   $('#tabs').innerHTML = tabs.map(t => { const b = badgeFor(t); return `<button data-tab="${t}" class="${S.view === t ? 'on' : ''}">${TABN[t]}${b ? `<span class="badge">${b}</span>` : ''}</button>`; }).join('');
 }
-$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; S.view = b.dataset.tab; scrollTo(0, 0); doRender(); });
+$('#tabs').addEventListener('click', e => { const b = e.target.closest('[data-tab]'); if (!b) return; S.view = b.dataset.tab; S.sel = null; scrollTo(0, 0); doRender(); });
 $('#meBtn').addEventListener('click', () => openIdentity(false));
 
 function people() {
@@ -458,12 +470,29 @@ function renderLists() {
 /* ---------- 库存页 ---------- */
 function stockShell() {
   return `<div id="stockShell"><div id="bannerBox"></div>
-    <div class="searchbar"><input id="q" type="search" enterkeyhint="search" placeholder="搜物品名、别名、规格" value="${esc(S.q)}" autocomplete="off"></div>
+    <div class="searchbar"><input id="q" type="search" enterkeyhint="search" placeholder="搜物品名、别名、规格" value="${esc(S.q)}" autocomplete="off">${isKeeper() ? `<button class="selbtn ${S.sel ? 'on' : ''}" id="selBtn">${S.sel ? '取消' : '选择'}</button>` : ''}</div>
     <div class="chips" id="chips"></div><div id="itemList"></div></div>`;
 }
 function bindStock() {
   $('#q').addEventListener('input', e => { S.q = e.target.value; renderItems(); });
   $('#chips').addEventListener('click', e => { const b = e.target.closest('[data-cat]'); if (!b) return; S.cat = b.dataset.cat; renderChips(); renderItems(); });
+  const sb = $('#selBtn'); if (sb) sb.onclick = () => setSel(S.sel ? null : new Set());
+  // 长按某一行进入多选
+  const il = $('#itemList'); let lp = null, sx = 0, sy = 0;
+  const cancel = () => { clearTimeout(lp); lp = null; };
+  il.addEventListener('touchstart', e => {
+    if (!isKeeper() || S.sel) return; const row = e.target.closest('[data-item]'); if (!row) return;
+    const t = e.touches[0]; sx = t.clientX; sy = t.clientY;
+    lp = setTimeout(() => { lp = null; S.lpEat = { id: row.dataset.item, t: Date.now() }; if (navigator.vibrate) try { navigator.vibrate(20); } catch (_) {} setSel(new Set([row.dataset.item])); }, 550);
+  }, { passive: true });
+  il.addEventListener('touchmove', e => { const t = e.touches[0]; if (Math.abs(t.clientX - sx) > 10 || Math.abs(t.clientY - sy) > 10) cancel(); }, { passive: true });
+  il.addEventListener('touchend', cancel); il.addEventListener('touchcancel', cancel);
+  il.addEventListener('contextmenu', e => { if (isKeeper()) e.preventDefault(); });
+}
+function setSel(v) {
+  S.sel = v;
+  const sb = $('#selBtn'); if (sb) { sb.textContent = v ? '取消' : '选择'; sb.classList.toggle('on', !!v); }
+  renderItems(); renderFloat();
 }
 function renderChips() {
   const list = ['全部', ...(S.items.some(i => (i.stock || 0) < 0) ? ['库存为负'] : []), ...(S.items.some(i => i.returnable) ? ['需归还'] : []), ...cats()];
@@ -493,25 +522,30 @@ function rowHtml(it) {
   const neg = (it.stock || 0) < 0;
   const sub = [it.spec, it.category].filter(Boolean).join('  ');
   const lent = it.lent || 0;
-  return `<button class="row" data-item="${it.id}">${thumb(it)}
+  const picked = S.sel && S.sel.has(it.id);
+  return `<button class="row ${picked ? 'picked' : ''}" data-item="${it.id}" ${S.sel ? `aria-pressed="${picked}"` : ''}>${S.sel ? `<span class="ck">${picked ? '✓' : ''}</span>` : ''}${thumb(it)}
     <div class="mid"><div class="nm">${esc(it.name)}</div><div class="sub">${esc(sub) || '&nbsp;'}</div></div>
     <div class="qty"><b class="num ${neg ? 'neg' : ''}">${fmt(it.stock)}</b><small>${esc(it.unit || '')}${lent > 0 ? `，借出 ${fmt(lent)}` : ''}</small></div></button>`;
 }
 function renderItems() {
   const el = $('#itemList'); if (!el) return;
+  if (S.sel && !isKeeper()) S.sel = null;
+  if (S.sel) for (const id of [...S.sel]) if (!item(id) || item(id).deleted) S.sel.delete(id);
   const list = filteredItems();
   if (!S.items.length) {
     el.innerHTML = `<div class="empty">${isKeeper() ? '仓库里还没有物品。<br>点右下角「新物品」添加，或在「更多」里导入 Excel。' : '库管员还没有录入物品。'}</div>`;
   } else if (!list.length) {
     el.innerHTML = `<div class="empty">没有找到${S.q ? `「${esc(S.q)}」` : '符合条件的物品'}。${isKeeper() ? '<br><button class="link" data-act="newItemQ">新建这样物品</button>' : ''}</div>`;
   } else {
-    el.innerHTML = `<div class="list">${list.map(rowHtml).join('')}</div><p class="foot">共 ${list.length} 样</p>`;
+    el.innerHTML = `<div class="list">${list.map(rowHtml).join('')}</div><p class="foot">共 ${list.length} 样</p>${S.sel ? '<div style="height:64px"></div>' : ''}`;
   }
   observePhotos(el);
 }
 function renderFloat() {
   let h = '';
-  if (S.view === 'stock' && isKeeper()) h = `<button class="fab" data-act="newItem">＋ 新物品</button>`;
+  if (S.view === 'stock' && isKeeper()) h = S.sel
+    ? `<div class="selbar"><span>已选 ${S.sel.size} 样</span><button class="btn" data-act="selAll">${filteredItems().length && filteredItems().every(i => S.sel.has(i.id)) ? '全不选' : '全选'}</button><button class="btn del" data-act="selDel" ${S.sel.size ? '' : 'disabled'}>删除</button><button class="btn" data-act="selCancel">取消</button></div>`
+    : `<button class="fab" data-act="newItem">＋ 新物品</button>`;
   if (S.view === 'stock' && me && me.role === 'user' && cart.length) h = `<div class="cartbar"><span>申报清单 ${cart.length} 样</span><button class="btn" data-act="openCart">查看并发送</button></div>`;
   $('#float').innerHTML = h;
 }
@@ -588,7 +622,7 @@ function openIdentity(first) {
     sh.querySelector('#ok').onclick = () => {
       const name = sh.querySelector('#nm').value.trim();
       if (!name) { alert('请填写名字'); return; }
-      me = { role, name }; localStorage.setItem('ck_me', JSON.stringify(me));
+      me = { role, name }; localStorage.setItem('ck_me', JSON.stringify(me)); S.sel = null;
       closeSheet(); S.view = 'stock'; $('#main').innerHTML = ''; render();
     };
   }, first);
@@ -609,7 +643,7 @@ function openItem(id) {
     <div class="field"><label>数量（${esc(it.unit || '')}）</label>${stepper('q', 1)}</div>
     <div class="field"><label>领用人（出库时填，可不填）</label><input id="person" list="peopleList" placeholder="名字或工票号"></div>
     <div class="btns"><button class="btn in" id="bIn">入库</button><button class="btn pri" id="bOut">${it.returnable ? '借出' : '出库'}</button></div>
-    <div class="btns"><button class="btn sm line2" id="bAdj">盘点</button><button class="btn sm line2" id="bEdit">编辑</button><button class="btn sm line2" id="bMerge">合并</button></div>` : '';
+    <div class="btns"><button class="btn sm line2" id="bAdj">盘点</button><button class="btn sm line2" id="bEdit">编辑</button><button class="btn sm line2" id="bMerge">合并</button><button class="btn sm warn" id="bDel">删除</button></div>` : '';
   const userBox = u ? `<div class="field"><label>要领多少（${esc(it.unit || '')}）</label>${stepper('q', 1)}</div>
     <div class="btns"><button class="btn pri" id="bCart">加入申报清单</button></div>` : '';
   const sh = openSheet(`${head(esc(it.name), esc([it.spec, it.category, it.alias ? '别名：' + it.alias : '', it.returnable ? '需归还' : ''].filter(Boolean).join('　')))}
@@ -637,6 +671,7 @@ function openItem(id) {
       sh.querySelector('#bAdj').onclick = () => openAdjust(it);
       sh.querySelector('#bEdit').onclick = () => openItemForm(it);
       sh.querySelector('#bMerge').onclick = () => openMerge(it);
+      sh.querySelector('#bDel').onclick = () => { if (deleteItems([it.id])) closeSheet(); };
     }
     if (u) sh.querySelector('#bCart').onclick = () => {
       const q = qv(); if (!(q > 0)) return alert('请填写大于 0 的数量');
@@ -1184,10 +1219,45 @@ function openRetCats() {
     });
   });
 }
+// 删除物品（不抹掉数据：标记 deleted，出入库记录保留，可撤销 / 找回）
+function deleteItems(ids) {
+  const its = ids.map(item).filter(i => i && !i.deleted);
+  if (!its.length) return false;
+  const lent = its.filter(i => (i.lent || 0) > 0);
+  if (lent.length) { alert(`下面这些还有借出没还，先处理归还再删：\n${lent.map(i => `${i.name} ${i.spec || ''}（借出 ${fmt(i.lent)} ${i.unit || ''}）`).join('\n')}`); return false; }
+  const withStock = its.filter(i => (i.stock || 0) !== 0);
+  const msg = (its.length === 1 ? `删除「${its[0].name}${its[0].spec ? ' ' + its[0].spec : ''}」？` : `删除这 ${its.length} 样物品？`)
+    + (withStock.length ? `\n\n其中还有库存：\n${withStock.slice(0, 8).map(i => `${i.name} ${i.spec || ''} ${fmt(i.stock)} ${i.unit || ''}`).join('\n')}${withStock.length > 8 ? `\n……等 ${withStock.length} 样` : ''}` : '')
+    + '\n\n出入库记录会保留，误删可以在「更多 → 修改和删除记录」里找回。';
+  if (!confirm(msg)) return false;
+  const t = now(); const aid = uid();
+  const ops = its.map(i => itemUpd(i.id, { deleted: true, delAt: t, delBy: me.name }));
+  ops.push({ op: 'set', c: 'audit', id: aid, d: { t, by: me.name, action: '删除物品', items: its.map(i => clean({ id: i.id, name: i.name, spec: i.spec || '', stock: i.stock || 0, unit: i.unit || '' })) } });
+  DB.commit(ops);
+  if (S.sel) setSel(null);
+  toast(`已删除 ${its.length} 样`, () => restoreItems(its.map(i => i.id), aid, true));
+  return true;
+}
+function restoreItems(ids, auditId, isUndo) {
+  const ops = ids.map(id => S.byId.get(id)).filter(i => i && i.deleted && !i.mergedInto).map(i => itemUpd(i.id, { deleted: false, lu: now() }));
+  if (!ops.length) { toast('这些物品已经恢复过了'); return; }
+  if (auditId) ops.push(isUndo ? { op: 'del', c: 'audit', id: auditId } : { op: 'upd', c: 'audit', id: auditId, d: { restored: true } });
+  DB.commit(ops); toast(isUndo ? '已撤销' : `已找回 ${ops.length - (auditId ? 1 : 0)} 样物品`);
+}
+function auditLine(a) {
+  if (a.action === '删除物品') {
+    const n = (a.items || []).map(i => `${esc(i.name)}${i.spec ? ' ' + esc(i.spec) : ''}`);
+    return `<div class="mini"><span>${esc(a.by)} 删除了物品：${n.slice(0, 5).join('、')}${n.length > 5 ? ` 等 ${n.length} 样` : ''}${a.restored ? '（已找回）' : ` <button class="link" data-ri="${a.id}">找回</button>`}</span><span>${fmtT(a.t)}</span></div>`;
+  }
+  const r = a.rec || {};
+  return `<div class="mini"><span>${esc(a.by)} ${a.action}了：${TYPE[r.type] || ''} ${esc(r.name || '')} ${fmt(r.qty)} ${esc(r.unit || '')}${a.newQty != null ? ` → ${fmt(a.newQty)}` : ''}${a.restored ? '（已找回）' : (a.action === '删除' ? ` <button class="link" data-rs="${a.id}">找回</button>` : '')}</span><span>${fmtT(a.t)}</span></div>`;
+}
 function openAudit() {
   openSheet(`${head('修改和删除记录', '只在这里能看到。误删的可以点「找回」。')}
-    ${S.audit.length ? S.audit.map(a => { const r = a.rec || {}; return `<div class="mini"><span>${esc(a.by)} ${a.action}了：${TYPE[r.type] || ''} ${esc(r.name || '')} ${fmt(r.qty)} ${esc(r.unit || '')}${a.newQty != null ? ` → ${fmt(a.newQty)}` : ''}${a.restored ? '（已找回）' : (a.action === '删除' ? ` <button class="link" data-rs="${a.id}">找回</button>` : '')}</span><span>${fmtT(a.t)}</span></div>`; }).join('') : '<div class="empty">没有修改过</div>'}`, sh => {
+    ${S.audit.length ? S.audit.map(auditLine).join('') : '<div class="empty">没有修改过</div>'}`, sh => {
     sh.addEventListener('click', e => {
+      const ri = e.target.closest('[data-ri]');
+      if (ri) { const a = S.audit.find(x => x.id === ri.dataset.ri); if (a && confirm('把这些物品找回来？库存数量和删除前一样。')) { restoreItems((a.items || []).map(i => i.id), a.id, false); closeSheet(); } return; }
       const b = e.target.closest('[data-rs]'); if (!b) return;
       const a = S.audit.find(x => x.id === b.dataset.rs); if (!a) return;
       const r = { ...a.rec }; const it = item(r.itemId);
@@ -1402,11 +1472,19 @@ const ACT = {
   burst: openBurst, retCats: openRetCats, audit: openAudit, import: openImport,
   expStock, expRec, expReq, expLend,
   seed: () => { if (confirm('载入 12 样示例物品？')) seed(); },
+  selAll: () => { const l = filteredItems(); const all = l.length && l.every(i => S.sel.has(i.id)); l.forEach(i => all ? S.sel.delete(i.id) : S.sel.add(i.id)); renderItems(); renderFloat(); },
+  selDel: () => { if (S.sel && S.sel.size) deleteItems([...S.sel]); },
+  selCancel: () => setSel(null),
   wipe: () => { if (confirm('清空这部手机上的全部演示数据？')) { DB.reset(); toast('已清空'); } }
 };
 $('#main').addEventListener('click', e => {
   const b = e.target.closest('[data-act],[data-item]'); if (!b) return;
-  if (b.dataset.item) return openItem(b.dataset.item);
+  if (b.dataset.item) {
+    if (S.lpEat && S.lpEat.id === b.dataset.item && Date.now() - S.lpEat.t < 1500) { S.lpEat = null; return; }
+    S.lpEat = null;
+    if (S.sel) { const id = b.dataset.item; S.sel.has(id) ? S.sel.delete(id) : S.sel.add(id); renderItems(); renderFloat(); return; }
+    return openItem(b.dataset.item);
+  }
   const f = ACT[b.dataset.act]; if (f) f(b.dataset.id, b);
 });
 
