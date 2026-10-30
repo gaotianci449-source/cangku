@@ -156,6 +156,15 @@ table.pv th,table.pv td{border-bottom:1px solid var(--soft);padding:6px 4px;text
 .rec .sign{font-weight:700;font-size:18px;white-space:nowrap}
 .plus{color:var(--green)}.minus{color:var(--blue)}
 .big{font-size:22px;font-weight:700;margin:6px 0}
+.loc{display:inline-block;font-size:12px;font-weight:700;background:#DCE7F5;color:var(--blue);border-radius:4px;padding:0 6px;margin-right:6px;line-height:18px}
+.loc.bad{background:#FBE1DD;color:var(--red)}
+.code{font-size:18px;font-weight:700;color:var(--blue);margin:-2px 0 4px;letter-spacing:.3px;word-break:break-all}
+.where{margin:10px 0 0;border:1.5px solid var(--blue);border-radius:10px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.wbig{font-size:26px;font-weight:800;color:var(--blue);letter-spacing:1px;line-height:1.15;word-break:break-all}
+.wsm{font-size:13px;color:var(--mute);text-align:right}
+.kv{display:grid;grid-template-columns:92px 1fr;border-top:1px solid var(--soft)}
+.kv div{padding:7px 0;border-bottom:1px solid var(--soft);font-size:14px;word-break:break-all}
+.kv div:nth-child(odd){color:var(--mute);padding-right:8px}
 .was{color:var(--mute);text-decoration:line-through;font-size:12px}
 .eline{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:10px}
 .eline.off{opacity:.55}
@@ -470,7 +479,7 @@ function renderLists() {
 /* ---------- 库存页 ---------- */
 function stockShell() {
   return `<div id="stockShell"><div id="bannerBox"></div>
-    <div class="searchbar"><input id="q" type="search" enterkeyhint="search" placeholder="搜物品名、别名、规格" value="${esc(S.q)}" autocomplete="off">${isKeeper() ? `<button class="selbtn ${S.sel ? 'on' : ''}" id="selBtn">${S.sel ? '取消' : '选择'}</button>` : ''}</div>
+    <div class="searchbar"><input id="q" type="search" enterkeyhint="search" placeholder="搜名称、配件编号、货位" value="${esc(S.q)}" autocomplete="off">${isKeeper() ? `<button class="selbtn ${S.sel ? 'on' : ''}" id="selBtn">${S.sel ? '取消' : '选择'}</button>` : ''}</div>
     <div class="chips" id="chips"></div><div id="itemList"></div></div>`;
 }
 function bindStock() {
@@ -501,7 +510,7 @@ function renderChips() {
 }
 function matchQ(it, q) {
   if (!q) return true;
-  const hay = [it.name, it.alias, it.spec, it.category].join(' ').toLowerCase();
+  const hay = [it.name, it.alias, it.spec, it.category, it.code, it.model, it.shelf].join(' ').toLowerCase();
   return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => hay.includes(w));
 }
 function filteredItems() {
@@ -520,11 +529,11 @@ function thumb(it, cls = 'thumb') {
 }
 function rowHtml(it) {
   const neg = (it.stock || 0) < 0;
-  const sub = [it.spec, it.category].filter(Boolean).join('  ');
+  const sub = [it.code, it.spec, it.model || it.category].filter(Boolean).join('  ');
   const lent = it.lent || 0;
   const picked = S.sel && S.sel.has(it.id);
   return `<button class="row ${picked ? 'picked' : ''}" data-item="${it.id}" ${S.sel ? `aria-pressed="${picked}"` : ''}>${S.sel ? `<span class="ck">${picked ? '✓' : ''}</span>` : ''}${thumb(it)}
-    <div class="mid"><div class="nm">${esc(it.name)}</div><div class="sub">${esc(sub) || '&nbsp;'}</div></div>
+    <div class="mid"><div class="nm">${esc(it.name)}</div><div class="sub">${it.shelf ? `<span class="loc">${esc(it.shelf)}</span>` : ''}${it.badQty ? '<span class="loc bad">数量待核</span>' : ''}${esc(sub) || (it.shelf ? '' : '&nbsp;')}</div></div>
     <div class="qty"><b class="num ${neg ? 'neg' : ''}">${fmt(it.stock)}</b><small>${esc(it.unit || '')}${lent > 0 ? `，借出 ${fmt(lent)}` : ''}</small></div></button>`;
 }
 function renderItems() {
@@ -646,10 +655,20 @@ function openItem(id) {
     <div class="btns"><button class="btn sm line2" id="bAdj">盘点</button><button class="btn sm line2" id="bEdit">编辑</button><button class="btn sm line2" id="bMerge">合并</button><button class="btn sm warn" id="bDel">删除</button></div>` : '';
   const userBox = u ? `<div class="field"><label>要领多少（${esc(it.unit || '')}）</label>${stepper('q', 1)}</div>
     <div class="btns"><button class="btn pri" id="bCart">加入申报清单</button></div>` : '';
-  const sh = openSheet(`${head(esc(it.name), esc([it.spec, it.category, it.alias ? '别名：' + it.alias : '', it.returnable ? '需归还' : ''].filter(Boolean).join('　')))}
-    ${photo}${stats}${keeperBox}${userBox}
+  const kv = (pairs) => pairs.filter(p => p[1] !== '' && p[1] != null).map(p => `<div>${esc(p[0])}</div><div>${esc(p[1])}</div>`).join('');
+  const where = (it.shelf || it.warehouse || it.place) ? `<div class="where"><div><div class="sub">货位号</div><div class="wbig">${esc(it.shelf || '—')}</div></div><div class="wsm">${esc(it.warehouse || '')}${it.warehouse && it.place ? '<br>' : ''}${esc(it.place || '')}</div></div>` : '';
+  const basic = kv([['规格', it.spec], ['适用机型', it.model], ['分类', it.category], ['别名', it.alias], ['单位', it.unit], ['入库时间', it.inDate]]);
+  const extra = kv((it.extra || []).map(e => [e.k, e.v]));
+  const srcH = it.src ? kv([['文件', it.src.file], ['工作表', it.src.sheet], ['原表行号', (it.src.rows || []).join('、')]]) : '';
+  const sh = openSheet(`${head(esc(it.name), esc([it.returnable ? '需归还' : ''].filter(Boolean).join('')))}
+    ${it.code ? `<div class="code">${esc(it.code)}</div>` : ''}
+    ${where}${stats}${it.badQty ? `<div class="warnbox">导入时原表数量不是数字，先按 0 记的，请盘点后改正。</div>` : ''}${keeperBox}${userBox}
+    ${basic ? `<div class="sec"><h3>基本信息</h3><div class="kv">${basic}</div></div>` : ''}
+    ${photo}
     <div class="sec"><h3>最近领用</h3>${uses.length ? uses.map(r => `<div class="mini"><span>${esc(r.person || '未填领用人')}　${fmt(r.qty)} ${esc(r.unit || '')}${r.type === 'lend' ? '（借）' : ''}</span><span>${fmtT(r.t)}</span></div>`).join('') : '<div class="mini"><span>还没有领用记录</span></div>'}</div>
-    <div class="sec"><h3>最后一次借出</h3>${lastLend ? `<div class="mini"><span>${esc(lastLend.person || '未填')}　${fmt(lastLend.qty)} ${esc(lastLend.unit || '')}　${lastLend.open ? `<span class="tag y">未还 ${fmt(lastLend.qty - lastLend.returned)}</span>` : '<span class="tag g">已还清</span>'}</span><span>${fmtT(lastLend.t)}</span></div>` : '<div class="mini"><span>还没有借出记录</span></div>'}</div>`,
+    <div class="sec"><h3>最后一次借出</h3>${lastLend ? `<div class="mini"><span>${esc(lastLend.person || '未填')}　${fmt(lastLend.qty)} ${esc(lastLend.unit || '')}　${lastLend.open ? `<span class="tag y">未还 ${fmt(lastLend.qty - lastLend.returned)}</span>` : '<span class="tag g">已还清</span>'}</span><span>${fmtT(lastLend.t)}</span></div>` : '<div class="mini"><span>还没有借出记录</span></div>'}</div>
+    ${extra ? `<div class="sec"><h3>原表其他信息</h3><div class="kv">${extra}</div></div>` : ''}
+    ${srcH ? `<div class="sec"><h3>导入来源</h3><div class="kv">${srcH}</div></div>` : ''}`,
   sh => {
     if (it.hasPhoto) loadPhoto(it.id, it.pv).then(src => { const ph = sh.querySelector('#ph'); if (src && ph) ph.insertAdjacentHTML('afterbegin', `<img src="${src}" alt="">`); });
     const cam = sh.querySelector('#camIn');
@@ -689,9 +708,9 @@ function openAdjust(it) {
     sh.querySelector('#ok').onclick = () => {
       const a = readNum(sh.querySelector('[name=q]').value); if (!(a >= 0)) return alert('请填写数量');
       const diff = r3(a - (it.stock || 0));
-      if (!diff) { closeSheet(); toast('数量一致，不用改'); return; }
+      if (!diff) { if (it.badQty) DB.commit([itemUpd(it.id, { badQty: false })]); closeSheet(); toast('数量一致，不用改'); return; }
       const r = recOp({ type: 'adjust', ...base(it), qty: diff, before: it.stock || 0, after: a });
-      DB.commit([itemUpd(it.id, { stock: INC(diff), lu: now() }), r.op]); closeSheet();
+      DB.commit([itemUpd(it.id, { stock: INC(diff), lu: now(), badQty: false }), r.op]); closeSheet();
       toast(`已盘点：${diff > 0 ? '+' : ''}${fmt(diff)} ${it.unit || ''}`, () => deleteRecord({ id: r.id, ...r.op.d }, true));
     };
   });
@@ -708,7 +727,10 @@ function openItemForm(it, preset) {
   let photo = null; let retTouched = edit;
   openSheet(`${head(edit ? '编辑物品' : '新物品')}
     <div class="field"><label>名称（必填）</label><input id="fName" value="${esc(it.name || preset.name || '')}" placeholder="比如：扎丝"><div id="simBox"></div></div>
+    <div class="field"><label>配件编号</label><input id="fCode" value="${esc(it.code || '')}" placeholder="没有可不填"></div>
     <div class="field"><label>规格 / 型号</label><input id="fSpec" value="${esc(it.spec || '')}" placeholder="比如：DN50、24mm"></div>
+    <div class="field"><label>货位号</label><input id="fShelf" value="${esc(it.shelf || '')}" placeholder="比如：1-B-0"></div>
+    <div class="field"><label>适用机型</label><input id="fModel" value="${esc(it.model || '')}" placeholder="没有可不填"></div>
     <div class="field"><label>单位</label><input id="fUnit" value="${esc(it.unit || '')}" placeholder="可以直接写"><div class="quick" id="units">${UNITS.map(u => `<button type="button">${u}</button>`).join('')}</div></div>
     <div class="field"><label>分类</label><input id="fCat" list="catList" value="${esc(it.category || '')}" placeholder="比如：工具、管材、劳保"></div>
     <div class="field"><label>别名（其他叫法，用逗号隔开）</label><input id="fAlias" value="${esc(it.alias || '')}" placeholder="比如：绑丝，铁丝"></div>
@@ -725,7 +747,7 @@ function openItemForm(it, preset) {
     const cam = g('#fCam');
     if (cam) cam.onchange = async () => { const f = cam.files[0]; if (!f) return; photo = await compress(f); g('#pv').innerHTML = `<img src="${photo}" alt="">`; };
     g('#ok').onclick = () => {
-      const d = { name: g('#fName').value.trim(), spec: g('#fSpec').value.trim(), unit: g('#fUnit').value.trim(), category: g('#fCat').value.trim(), alias: g('#fAlias').value.trim(), returnable: g('#fRet').checked };
+      const d = { name: g('#fName').value.trim(), code: g('#fCode').value.trim(), shelf: g('#fShelf').value.trim(), model: g('#fModel').value.trim(), spec: g('#fSpec').value.trim(), unit: g('#fUnit').value.trim(), category: g('#fCat').value.trim(), alias: g('#fAlias').value.trim(), returnable: g('#fRet').checked };
       if (!d.name) return alert('请填写名称');
       if (edit) {
         DB.commit([itemUpd(it.id, d)]); closeSheet(); toast('已保存'); return;
@@ -1308,82 +1330,156 @@ async function writeX(rows, sheet, file) {
     X.writeFile(wb, `${file}_${fmtD(now())}.xlsx`);
   } catch (e) { alert(e.message); }
 }
-const H = {
-  name: ['名称', '物品', '物品名称', '品名', '材料名称', '名字', '物资名称', '材料'],
-  spec: ['规格', '型号', '规格型号', '规格/型号'],
-  unit: ['单位', '计量单位'],
-  qty: ['数量', '库存', '库存数量', '结存', '现有数量', '在库', '现存'],
-  category: ['分类', '类别', '类型', '大类'],
-  alias: ['别名', '俗称', '其他叫法'],
-  returnable: ['需归还', '是否归还', '需要归还']
-};
+// 表头同义词：表头按 "/" 拆开，任意一段完全对上就算（避免"装箱类别"被当成"类别"）
+const H = [
+  ['name', ['名称', '物品', '物品名称', '品名', '材料名称', '物资名称', '配件名称', '名字', '材料', '物资']],
+  ['code', ['配件编号', '零件号', '零件编号', '物料编码', '物料编号', '配件号']],
+  ['model', ['适用机型', '主要技术要求', '技术要求', '机型', '设备型号', '适用设备']],
+  ['shelf', ['货位号', '货位', '货架', '货架号', '库位', '库位号']],
+  ['warehouse', ['仓库号', '仓库', '库房', '库房号']],
+  ['place', ['存放地点', '存放位置']],
+  ['inDate', ['入库时间', '入库日期', '到货日期', '到货时间']],
+  ['unit', ['单位', '计量单位']],
+  ['qty', ['数量', '库存', '库存数量', '结存', '现有数量', '在库', '现存']],
+  ['spec', ['规格', '型号', '规格型号']],
+  ['category', ['分类', '类别', '类型', '大类']],
+  ['alias', ['别名', '俗称', '其他叫法']],
+  ['returnable', ['需归还', '是否归还', '需要归还']]
+];
+const FN = { name: '名称', code: '配件编号', model: '适用机型', shelf: '货位号', warehouse: '仓库号', place: '存放地点', inDate: '入库时间', unit: '单位', qty: '数量', spec: '规格', category: '分类', alias: '别名', returnable: '需归还' };
+const hParts = c => String(c ?? '').replace(/\s/g, '').replace(/[（(][^）)]*[）)]/g, '').split(/[\/／]/).filter(Boolean);
+function detectHeader(rows) {
+  for (let r = 0; r < Math.min(rows.length, 15); r++) {
+    const m = {}, used = new Set();
+    for (const [k, words] of H) {
+      for (let ci = 0; ci < rows[r].length; ci++) {
+        if (used.has(ci)) continue;
+        if (hParts(rows[r][ci]).some(p => words.includes(p))) { m[k] = ci; used.add(ci); break; }
+      }
+    }
+    if (m.name != null) return { hi: r, map: m };
+  }
+  return null;
+}
+const cellStr = v => v == null ? '' : String(v).replace(/\s+/g, ' ').trim();
+function fmtDateCell(v) {
+  if (typeof v === 'number') {
+    if (v >= 19000101 && v <= 21001231) { const t = String(Math.round(v)); return `${t.slice(0, 4)}-${t.slice(4, 6)}-${t.slice(6, 8)}`; }
+    if (v > 20000 && v < 80000) { const d = new Date(Math.round((v - 25569) * 86400000)); return `${d.getUTCFullYear()}-${p2(d.getUTCMonth() + 1)}-${p2(d.getUTCDate())}`; }
+  }
+  return cellStr(v);
+}
+const isTotalRow = n => /^(合计|小计|总计|共计)[:：]?$/.test(n);
+const itemKey = x => [x.name, x.code || '', x.spec || '', x.shelf || ''].join('|').toLowerCase();
+// 把一个工作表解析成物品行（同一 名称+编号+规格+货位 的行合并，数量相加）
+function parseSheet(rows, det, sheetName, fileName) {
+  const { hi, map } = det; const hdr = rows[hi] || [];
+  const mapped = new Set(Object.values(map));
+  const hname = (ci, seen) => { let h = cellStr(hdr[ci]) || `其他（第${ci + 1}列）`; let k = h, n = 2; while (seen.has(k)) k = `${h}(${n++})`; seen.add(k); return k; };
+  const names = {}; const seen = new Set(); hdr.forEach((_, ci) => { if (!mapped.has(ci)) names[ci] = hname(ci, seen); });
+  const out = new Map(); let skipped = 0;
+  rows.slice(hi + 1).forEach((row, ri) => {
+    const v = k => map[k] == null ? '' : cellStr(row[map[k]]);
+    const name = v('name');
+    if (!name || isTotalRow(name)) { if (row.some(c => cellStr(c))) skipped++; return; }
+    const rawQ = map.qty == null ? '' : row[map.qty];
+    const q = typeof rawQ === 'number' ? r3(rawQ) : readNum(cellStr(rawQ));
+    const extra = [];
+    for (let ci = 0; ci < row.length; ci++) { if (mapped.has(ci)) continue; const val = cellStr(row[ci]); if (val) extra.push({ k: names[ci] || `其他（第${ci + 1}列）`, v: val }); }
+    const bad = cellStr(rawQ) !== '' && !Number.isFinite(q);
+    if (bad) extra.unshift({ k: '原表数量', v: cellStr(rawQ) });
+    const ret = v('returnable');
+    const x = { name, code: v('code'), spec: v('spec'), model: v('model'), unit: v('unit'), category: v('category') || sheetName, alias: v('alias'),
+      shelf: v('shelf'), warehouse: v('warehouse'), place: v('place'), inDate: map.inDate == null ? '' : fmtDateCell(row[map.inDate]),
+      qty: Number.isFinite(q) ? q : 0, bad, returnable: /是|需|要|y|1|√/i.test(ret) && !/否|不/.test(ret), extra, rows: [hi + ri + 2] };
+    const key = itemKey(x); const old = out.get(key);
+    if (!old) { out.set(key, x); return; }
+    old.qty = r3(old.qty + x.qty); old.rows.push(...x.rows); old.bad = old.bad || x.bad;
+    for (const f of ['unit', 'model', 'warehouse', 'place', 'inDate', 'alias']) if (!old[f] && x[f]) old[f] = x[f];
+    for (const e of x.extra) { const o = old.extra.find(y => y.k === e.k); if (!o) old.extra.push({ ...e }); else if (!o.v.split('；').includes(e.v)) o.v += '；' + e.v; }
+    if (x.inDate && old.inDate && !old.inDate.split('；').includes(x.inDate)) old.inDate += '；' + x.inDate;
+  });
+  return { list: [...out.values()], skipped, file: fileName, sheet: sheetName };
+}
 function openImport() {
-  let parsed = null, mode = 'skip';
-  openSheet(`${head('导入物品清单', '选一个 Excel / WPS 表格，表头要有"名称"，可以有规格、单位、数量、分类、别名。')}
+  let mode = 'skip', book = null;
+  openSheet(`${head('导入物品清单', '选一个 Excel / WPS 表格（.xlsx / .xls）。表头要有"名称"或"物资名称"之类的列，其他列都会原样保存。')}
     <label class="btn pri filebtn" style="width:100%">选择表格文件<input type="file" id="xf" accept=".xlsx,.xls,.csv,.et"></label>
     <div id="xp"></div>`, sh => {
     const xp = sh.querySelector('#xp');
+    const preview = () => {
+      const chosen = book.sheets.filter(x => x.on && x.res);
+      const all = chosen.flatMap(x => x.res.list);
+      const exist = new Map(S.items.map(i => [itemKey(i), i]));
+      all.forEach(x => x.ex = exist.get(itemKey(x)));
+      const nNew = all.filter(x => !x.ex).length, nEx = all.length - nNew;
+      const bad = all.filter(x => x.bad), merged = all.filter(x => x.rows.length > 1);
+      const rowsN = chosen.reduce((a, x) => a + x.res.list.reduce((b, y) => b + y.rows.length, 0), 0);
+      const m = chosen[0] && chosen[0].det.map;
+      xp.innerHTML = `
+        <div class="field"><label>要导入的工作表（工作表名当分类）</label>${book.sheets.map((x, i) => `<label class="check" style="min-height:40px"><input type="checkbox" data-si="${i}" ${x.on ? 'checked' : ''} ${x.res ? '' : 'disabled'}> ${esc(x.name)}　<span class="sub">${x.res ? `${x.res.list.reduce((b, y) => b + y.rows.length, 0)} 行` : x.empty ? '空表' : '认不出名称列，跳过'}</span></label>`).join('')}</div>
+        ${m ? `<div class="note">认出的列：${Object.entries(m).map(([k, ci]) => `${FN[k]}（${esc(cellStr(chosen[0].hdr[ci]))}）`).join('、')}；其余的列原样保存。</div>` : ''}
+        <div class="big">${rowsN} 行 → 新物品 ${nNew} 样${nEx ? `，已有 ${nEx} 样` : ''}</div>
+        ${merged.length ? `<div class="warnbox">有 ${merged.length} 样在表里出现了多行（名称、编号、规格、货位都一样），已合并，数量相加。</div>` : ''}
+        ${bad.length ? `<div class="warnbox" style="background:#FBE1DD;color:#7d2219">有 ${bad.length} 样数量不是数字（如「${esc(bad[0].extra[0].v)}」），先按 0 导入，原来写的保存在「原表数量」里，导入后再改。</div>` : ''}
+        ${nEx ? `<div class="field"><label>已有的物品怎么处理</label><div class="seg" id="xm"><button class="${mode === 'skip' ? 'on' : ''}" data-m="skip">跳过</button><button class="${mode === 'set' ? 'on' : ''}" data-m="set">用表格数量覆盖</button></div></div>` : ''}
+        <table class="pv"><tr><th>名称</th><th>编号/规格</th><th>货位</th><th>数量</th></tr>${all.slice(0, 15).map(x => `<tr><td>${esc(x.name)}${x.ex ? ' <span class="tag">已有</span>' : ''}</td><td>${esc([x.code, x.spec].filter(Boolean).join(' '))}</td><td>${esc(x.shelf)}</td><td class="${x.bad ? 'neg' : ''}">${x.bad ? '?' : fmt(x.qty)} ${esc(x.unit)}</td></tr>`).join('')}</table>
+        ${all.length > 15 ? `<div class="note">只显示前 15 样，共 ${all.length} 样</div>` : ''}
+        <div class="btns"><button class="btn pri" id="xgo" ${all.length ? '' : 'disabled'}>确认导入 ${all.length} 样</button></div>`;
+      xp.querySelectorAll('[data-si]').forEach(c => c.onchange = () => { book.sheets[+c.dataset.si].on = c.checked; preview(); });
+      const xm = xp.querySelector('#xm');
+      if (xm) xm.addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; xm.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
+      xp.querySelector('#xgo').onclick = () => {
+        if (!confirm(`导入 ${all.length} 样物品？`)) return;
+        const ops = []; let n = 0; const t0 = now();
+        all.forEach((x, i) => {
+          if (x.ex) {
+            if (mode === 'set' && !x.bad) { const diff = r3(x.qty - (x.ex.stock || 0)); if (diff) { ops.push(itemUpd(x.ex.id, { stock: INC(diff) })); ops.push(recOp({ type: 'adjust', ...base(x.ex), qty: diff, before: x.ex.stock || 0, after: x.qty, note: '表格导入' }).op); n++; } }
+            return;
+          }
+          const id = uid() + i.toString(36); const q = x.qty || 0;
+          const ret = x.returnable || (S.settings.returnCats || []).includes(x.category);
+          const src = book.sheets.find(s2 => s2.res && s2.res.list.includes(x));
+          ops.push({ op: 'set', c: 'items', id, d: clean({ name: x.name, code: x.code, spec: x.spec, model: x.model, unit: x.unit, category: x.category, alias: x.alias,
+            shelf: x.shelf, warehouse: x.warehouse, place: x.place, inDate: x.inDate, extra: x.extra, badQty: x.bad || undefined,
+            src: { file: book.file, sheet: src ? src.name : '', rows: x.rows.slice(0, 50) },
+            returnable: ret, stock: q, lent: 0, broken: 0, t: t0 - i, lu: t0 - i, hasPhoto: false, pv: 0 }) });
+          if (q) ops.push(recOp({ type: 'new', itemId: id, name: x.name, spec: [x.code, x.spec].filter(Boolean).join(' '), unit: x.unit, qty: q, note: '表格导入' }).op);
+          n++;
+        });
+        if (!ops.length) { closeSheet(); toast('没有需要导入的'); return; }
+        DB.commit(ops); closeSheet(); toast(`已导入 ${n} 样`);
+      };
+    };
     sh.querySelector('#xf').onchange = async e => {
       const f = e.target.files[0]; if (!f) return;
       xp.innerHTML = '<div class="note">正在读取…</div>';
       try {
         const X = await loadXLSX();
         const wb = X.read(await f.arrayBuffer());
-        const ws = wb.Sheets[wb.SheetNames[0]];
-        const rows = X.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
-        let hi = -1, map = {};
-        for (let r = 0; r < Math.min(rows.length, 15) && hi < 0; r++) {
-          const m = {};
-          rows[r].forEach((c, ci) => { const t = String(c).replace(/\s/g, ''); for (const k in H) if (m[k] == null && H[k].some(w => t === w || (t.includes(w) && t.length <= w.length + 4))) m[k] = ci; });
-          if (m.name != null) { hi = r; map = m; }
-        }
-        if (hi < 0) { xp.innerHTML = '<div class="warnbox">前 15 行里没找到"名称"这一列。请检查表头。</div>'; return; }
-        const keyOf = (n, s) => (n + '|' + s).toLowerCase();
-        const exist = new Map(S.items.map(i => [keyOf(i.name, i.spec || ''), i]));
-        const out = [];
-        for (const row of rows.slice(hi + 1)) {
-          const v = k => map[k] == null ? '' : String(row[map[k]] ?? '').trim();
-          const name = v('name'); if (!name) continue;
-          const q = readNum(v('qty'));
-          const ret = v('returnable');
-          out.push({ name, spec: v('spec'), unit: v('unit'), category: v('category'), alias: v('alias'), qty: Number.isFinite(q) ? q : null, returnable: /是|需|要|y|1|√/i.test(ret) && !/否|不/.test(ret), ex: exist.get(keyOf(name, v('spec'))) });
-        }
-        parsed = out;
-        const nNew = out.filter(x => !x.ex).length, nEx = out.length - nNew;
-        const found = Object.keys(map).map(k => ({ name: '名称', spec: '规格', unit: '单位', qty: '数量', category: '分类', alias: '别名', returnable: '需归还' }[k])).join('、');
-        xp.innerHTML = `<div class="note">认出的列：${found}</div>
-          <div class="big">新物品 ${nNew} 样${nEx ? `，已有 ${nEx} 样` : ''}</div>
-          ${nEx ? `<div class="field"><label>已有的物品怎么处理</label><div class="seg" id="xm"><button class="on" data-m="skip">跳过</button><button data-m="set">用表格数量覆盖</button></div></div>` : ''}
-          <table class="pv"><tr><th>名称</th><th>规格</th><th>数量</th><th>单位</th><th></th></tr>${out.slice(0, 12).map(x => `<tr><td>${esc(x.name)}</td><td>${esc(x.spec)}</td><td>${x.qty == null ? '' : fmt(x.qty)}</td><td>${esc(x.unit)}</td><td>${x.ex ? '已有' : ''}</td></tr>`).join('')}</table>
-          ${out.length > 12 ? `<div class="note">只显示前 12 行，共 ${out.length} 行</div>` : ''}
-          <div class="btns"><button class="btn pri" id="xgo">确认导入</button></div>`;
-        const xm = xp.querySelector('#xm');
-        if (xm) xm.addEventListener('click', e => { const b = e.target.closest('[data-m]'); if (!b) return; mode = b.dataset.m; xm.querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b)); });
-        xp.querySelector('#xgo').onclick = () => {
-          const ops = []; let n = 0; const t0 = now();
-          parsed.forEach((x, i) => {
-            if (x.ex) {
-              if (mode === 'set' && x.qty != null) { const diff = r3(x.qty - (x.ex.stock || 0)); if (diff) { ops.push(itemUpd(x.ex.id, { stock: INC(diff) })); ops.push(recOp({ type: 'adjust', ...base(x.ex), qty: diff, before: x.ex.stock || 0, after: x.qty, note: '表格导入' }).op); n++; } }
-              return;
-            }
-            const id = uid(); const q = x.qty || 0;
-            const ret = x.returnable || (S.settings.returnCats || []).includes(x.category);
-            ops.push({ op: 'set', c: 'items', id, d: { name: x.name, spec: x.spec, unit: x.unit, category: x.category, alias: x.alias, returnable: ret, stock: q, lent: 0, broken: 0, t: t0 - i, lu: t0 - i, hasPhoto: false, pv: 0 } });
-            if (q) ops.push(recOp({ type: 'new', itemId: id, name: x.name, spec: x.spec, unit: x.unit, qty: q, note: '表格导入' }).op);
-            n++;
-          });
-          if (!ops.length) { closeSheet(); toast('没有需要导入的'); return; }
-          DB.commit(ops); closeSheet(); toast(`已导入 ${n} 样`);
-        };
+        book = { file: f.name, sheets: wb.SheetNames.map(name => {
+          const rows = X.utils.sheet_to_json(wb.Sheets[name], { header: 1, defval: '', raw: true, blankrows: true });
+          const empty = !rows.some(r => r.some(c => cellStr(c)));
+          const det = empty ? null : detectHeader(rows);
+          const res = det ? parseSheet(rows, det, name.trim(), f.name) : null;
+          return { name: name.trim(), det, hdr: det ? rows[det.hi] : null, res: res && res.list.length ? res : null, empty: empty || (res && !res.list.length), on: false };
+        }) };
+        const ok = book.sheets.filter(x => x.res);
+        if (!ok.length) { xp.innerHTML = '<div class="warnbox">没有找到带"名称"列的工作表。请检查表头。</div>'; return; }
+        ok[0].on = true; // 默认只勾第一个能用的工作表，其他的自己勾
+        preview();
       } catch (err) { xp.innerHTML = `<div class="warnbox">读取失败：${esc(err.message)}</div>`; }
     };
   });
 }
 function expStock() {
-  writeX(S.items.slice().sort((a, b) => String(a.category).localeCompare(String(b.category), 'zh') || String(a.name).localeCompare(String(b.name), 'zh')).map(i => ({
-    名称: i.name, 规格: i.spec || '', 分类: i.category || '', 别名: i.alias || '', 单位: i.unit || '',
-    在库: r3(i.stock), 借出: r3(i.lent), 损坏: r3(i.broken), 总数: r3((i.stock || 0) + (i.lent || 0)), 需归还: i.returnable ? '是' : '否'
-  })), '库存', '库存');
+  writeX(S.items.slice().sort((a, b) => String(a.category).localeCompare(String(b.category), 'zh') || String(a.name).localeCompare(String(b.name), 'zh')).map(i => {
+    const row = { 名称: i.name, 配件编号: i.code || '', 规格: i.spec || '', 适用机型: i.model || '', 分类: i.category || '', 别名: i.alias || '', 单位: i.unit || '',
+      在库: r3(i.stock), 借出: r3(i.lent), 损坏: r3(i.broken), 总数: r3((i.stock || 0) + (i.lent || 0)), 需归还: i.returnable ? '是' : '否',
+      货位号: i.shelf || '', 仓库号: i.warehouse || '', 存放地点: i.place || '', 入库时间: i.inDate || '' };
+    (i.extra || []).forEach(e => { if (!(e.k in row)) row[e.k] = e.v; });
+    return row;
+  }), '库存', '库存');
 }
 function dateRange(sh) {
   const a = sh.querySelector('#d1').value, b = sh.querySelector('#d2').value;
